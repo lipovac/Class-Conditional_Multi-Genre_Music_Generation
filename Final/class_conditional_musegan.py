@@ -9,7 +9,7 @@ Original file is located at
 
 import numpy as np
 import os, sys
-from tqdm import tqdm
+from tqdm import trange
 from os.path import dirname, abspath, basename, exists, splitext, join
 
 import tensorflow as tf
@@ -548,12 +548,14 @@ def main():
     classifier_varlist = list(filter(lambda a : "classifier" in a.name, [v for v in tf.trainable_variables()]))
     optim = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE, beta1=0.9, beta2=0.999, epsilon=1e-08, use_locking=False, name='Classifier_Optimizer').minimize(classifier_cce_loss, var_list=classifier_varlist)
 
-    classifier_accuracy = tf.metrics.accuracy(labels, classifier_out)
+    classifier_accuracy, acc_op = tf.metrics.accuracy(real_data_labels, tf.argmax(classifier_out, 1))
 
     print("Initialising session...")
-    init = tf.global_variables_initializer()
+    init_g = tf.global_variables_initializer()
+    init_l = tf.local_variables_initializer()
     sess = tf.Session()
-    sess.run(init)
+    sess.run(init_g)
+    sess.run(init_l)
     saver = tf.train.Saver()
 
     data_path = abspath(sys.argv[1])
@@ -564,18 +566,23 @@ def main():
     os.makedirs(models_directory, exist_ok=True)
     accuracy_old = 0
 
-    for t in tqdm(range(int(data.num_examples/BATCH_SIZE*CLASSIFIER_EPOCHS))):
+    progress = trange(int(data.num_examples/BATCH_SIZE*CLASSIFIER_EPOCHS), desc = 'Bar_desc', leave = True)
+
+
+    for t in progress:
         data_batch, label_batch = data.get_batch()
         loss_np, optim_np = sess.run([classifier_cce_loss, optim], feed_dict={real_data: data_batch, real_data_labels: label_batch})
+        accuracy = sess.run([classifier_accuracy, acc_op], feed_dict={real_data: data_batch, real_data_labels: label_batch})
+        progress.set_description(' LOSS ===> ' + str(loss_np) + ' ACCURACY ===> ' + str(accuracy[1]))
+        progress.refresh()
 
         if (t*BATCH_SIZE)%data.num_examples == 0:
-          filename = "model-" + str((t*BATCH_SIZE)/data.num_example)
+            if accuracy[1]>accuracy_old:
+                accuracy_old = accuracy[1]
+                #print("Saving File")
+                filename = "model-" + str((t*BATCH_SIZE)/data.num_examples)+"-"+str(accuracy_old)
+                saver.save(sess, join(models_directory, filename))
 
-          saver.save(sess, join(models_directory, filename))
-          #accuracy = sess.run([classifier_accuracy], feed_dict={real_data: data_batch, real_data_labels: label_batch})
-          #if accurracy > accuracy_old:
-            #save model
-            #accuracy_old = accuracy
 
 
     def model_summary():
