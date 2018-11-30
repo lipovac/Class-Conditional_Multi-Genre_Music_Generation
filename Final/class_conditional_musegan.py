@@ -561,12 +561,11 @@ def main():
     data = Data(data_path) #Path to directory containing music set
     accuracy_old = 0
 
-    for t in tqdm(range(NUM_ITERATIONS)):
-        print(t)
+    for t in tqdm(range(data.num_examples/BATCH_SIZE*CLASSIFIER_EPOCHS)):
         data_batch, label_batch = data.get_batch()
         loss_np, optim_np = sess.run([classifier_cce_loss, optim], feed_dict={real_data: data_batch, real_data_labels: label_batch})
 
-        if t == NUM_ITERATIONS*BATCH_SIZE/TRAINING_SET_LENGTH:
+        if (t*BATCH_SIZE)%data.num_examples == 0:
           accuracy = sess.run([classifier_accuracy], feed_dict={real_data: data_batch, real_data_labels: label_batch})
           if accurracy > accuracy_old:
             #save model
