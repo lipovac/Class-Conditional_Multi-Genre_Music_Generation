@@ -559,6 +559,9 @@ def main():
     data_path = abspath(sys.argv[1])
     print("Loading in Data from: ", data_path)
     data = Data(data_path) #Path to directory containing music set
+
+    models_directory = join(os.getcwd(), "saved_models")
+    os.makedirs(models_directory, exist_ok=True)
     accuracy_old = 0
 
     for t in tqdm(range(int(data.num_examples/BATCH_SIZE*CLASSIFIER_EPOCHS))):
@@ -566,8 +569,9 @@ def main():
         loss_np, optim_np = sess.run([classifier_cce_loss, optim], feed_dict={real_data: data_batch, real_data_labels: label_batch})
 
         if (t*BATCH_SIZE)%data.num_examples == 0:
-          filename = "model-" + str(accuracy) + "-" + str(t)
-          saver.save(sess, filename)
+          filename = "model-" + str((t*BATCH_SIZE)/data.num_example)
+
+          saver.save(sess, join(models_directory, filename))
           #accuracy = sess.run([classifier_accuracy], feed_dict={real_data: data_batch, real_data_labels: label_batch})
           #if accurracy > accuracy_old:
             #save model
