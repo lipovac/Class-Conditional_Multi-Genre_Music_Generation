@@ -445,7 +445,7 @@ def Classifier(refiner_out, NUM_TRACKS, NUM_CLASSES):
   def Merged_Classifier(concated, NUM_CLASSES):
     merged_conv3d_1 = tf.layers.conv3d(concated, 512, (2, 1, 1), (1, 1, 1), activation = my_leaky_relu, name = ('classifier_merged_conv3d_1'))
     reshape = tf.reshape(merged_conv3d_1, [-1, 512*3])
-    dense = tf.layers.dense(reshape, NUM_CLASSES, activation = 'softmax', name='classifier_dense_out')
+    dense = tf.layers.dense(reshape, NUM_CLASSES, name='classifier_dense_out')
     return dense
 
   #print(refiner_out.get_shape())
@@ -467,6 +467,7 @@ def Classifier(refiner_out, NUM_TRACKS, NUM_CLASSES):
   concated = tf.concat([shared_discriminator_out, chroma_out, onset_out], -1)
   #concated = tf.concat([chroma_out, onset_out], -1)
   #print(concated)
+  #classifier_out = Merged_Classifier(tf.concat([chroma_out, onset_out], -1), NUM_CLASSES)
   classifier_out = Merged_Classifier(concated, NUM_CLASSES)
   return classifier_out
 
@@ -518,7 +519,7 @@ class Loss_Functions():
     self.gradient_penalty = gradient_penalty
 
 def classifier_loss(data, labels, label_smoothing, confidence_penalty): # if label smoothing nonzero then is used
-  return tf.losses.softmax_cross_entropy(labels, data, label_smoothing= label_smoothing) + confidence_penalty*tf.reduce_sum(data*tf.log(data))
+  return tf.losses.softmax_cross_entropy(labels, data, label_smoothing= label_smoothing) + confidence_penalty*tf.reduce_sum(tf.nn.softmax(data)*tf.log(tf.nn.softmax(data)))
 
 
 def adverserial_loss(D_fake_data, D_real_data, real_input_data, G_out, gradient_penalty): #WGAN with gradient penalty
@@ -610,7 +611,7 @@ def main():
     classifier_out = Classifier(real_data, NUM_TRACKS, NUM_CLASSES)
 
     #classifier_loss_functions = Loss_Functions(gp_coefficient = 1, discriminator_coefficient = 0.5)
-    classifier_cce_loss = classifier_loss(classifier_out, labels, 0, 0.03)
+    classifier_cce_loss = classifier_loss(classifier_out, labels, 0, 0)
     #classifier_varlist = list(filter(lambda a : "classifier" in a.name, [v for v in tf.trainable_variables()]))
     optim = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE, beta1=0.9, beta2=0.999, epsilon=1e-08, use_locking=False, name='Classifier_Optimizer').minimize(classifier_cce_loss)
 
@@ -624,7 +625,7 @@ def main():
     sess.run(init_l)
     saver = tf.train.Saver()
 
-    print(LEARNING_RATE)
+    #print(LEARNING_RATE)
 
     data_path = abspath(sys.argv[1])
     print("Loading in Data from: ", data_path)
@@ -639,15 +640,15 @@ def main():
 
     data_batch, label_batch = data.get_batch()
     #print(np.sum(data_batch[0]))
-    label, log_labels = sess.run([classifier_out, tf.log(classifier_out)], feed_dict={real_data: data_batch[0:2], real_data_labels: label_batch[0:2]})
-    print("Labels", labels)
-    print("LogLabels", log_labels)
+    #label, log_labels = sess.run([classifier_out, tf.log(classifier_out)], feed_dict={real_data: data_batch[0:2], real_data_labels: label_batch[0:2]})
+    #print("Labels", labels)
+    #print("LogLabels", log_labels)
 
     #print(sess.run([classifier_out], feed_dict={real_data: data_batch, real_data_labels: label_batch}))
 
 
 
-    progress = trange(1000, desc = 'Bar_desc', leave = True)
+    progress = trange(10, desc = 'Bar_desc', leave = True)
     #progress = trange(int(data.num_examples/BATCH_SIZE*CLASSIFIER_EPOCHS), desc = 'Bar_desc', leave = True)
 
     for t in progress:
@@ -668,7 +669,8 @@ def main():
                 #print("Saving File")
                 filename = "model-" + str((t*BATCH_SIZE)/data.num_examples)+"-"+str(accuracy_old)
                 saver.save(sess, join(models_directory, filename))
-    print(sess.run([classifier_out], feed_dict={real_data: data_batch, real_data_labels: label_batch}))
+    out = (sess.run([tf.nn.softmax(classifier_out)], feed_dict={real_data: data_batch, real_data_labels: label_batch})[0]*100).astype(np.int)/100
+    print(out)
 
 
 
