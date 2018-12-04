@@ -11,6 +11,7 @@ import numpy as np
 import os, sys
 from tqdm import trange
 from os.path import dirname, abspath, basename, exists, splitext, join
+from datetime import datetime
 
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
@@ -294,49 +295,104 @@ def Discriminator(refiner_out, NUM_TRACKS):
 
   #Chroma: reduce along octaves and tracks to determine chroma and then pass that into chroma discriminator
   def Chroma(refiner_out):
-    reshape = tf.transpose(tf.reshape(refiner_out, [-1,5, 4, 4, 24, 7, 12]), [0,2,3,4,5,6,1], name = 'discriminator_chroma_reshape')
+    reshape = tf.reshape(refiner_out, [-1, 4, 4, 24, 7, 12, 5], name = 'discriminator_chroma_reshape')
     sum_1 = tf.reduce_sum(reshape, axis=(3, 4), name = 'discriminator_chroma_sum')
     chroma_conv3d_1 = tf.layers.conv3d(sum_1, 64, (1, 1, 12), (1, 1, 12), activation = my_leaky_relu, name = ('discriminator_chroma_conv3d_1'))
     chroma_conv3d_2 = tf.layers.conv3d(chroma_conv3d_1, 128, (1, 4, 1), (1, 4, 1), activation = my_leaky_relu, name = ('discriminator_chroma_conv3d_2'))
     return chroma_conv3d_2
 
   def Onset(refiner_out):
-    reshape = tf.transpose(tf.reshape(refiner_out, [-1,5, 4, 96, 84]), [0,2,3,4,1])
-    padded = tf.pad(reshape[:, :, :-1, :, 1:], [[0, 0], [0, 0], [1, 0], [0, 0], [0, 0]])
-    onset = tf.concat([tf.expand_dims(reshape[..., 0], -1), reshape[..., 1:] - padded], -1)
+    padded = tf.pad(refiner_out[:, :, :-1, :, 1:], [[0, 0], [0, 0], [1, 0], [0, 0], [0, 0]])
+    onset = tf.concat([tf.expand_dims(refiner_out[..., 0], -1), refiner_out[..., 1:] - padded], -1)
     sum_1 = tf.reduce_sum(onset, 3, keepdims = True, name='discriminator_onset_sum')
     onset_conv3d_1 = tf.layers.conv3d(sum_1, 32, (1, 6, 1), (1, 6, 1), activation = my_leaky_relu, name = ('discriminator_onset_conv3d_1'))
     onset_conv3d_2 = tf.layers.conv3d(onset_conv3d_1, 64, (1, 4, 1), (1, 4, 1), activation = my_leaky_relu, name = ('discriminator_onset_conv3d_2'))
     onset_conv3d_3 = tf.layers.conv3d(onset_conv3d_2, 128, (1, 4, 1), (1, 4, 1), activation = my_leaky_relu, name = ('discriminator_onset_conv3d_3'))
     return onset_conv3d_3
 
-  def Merged_Discriminator(concated):
+  def Merged_Discriminator(concated, NUM_CLASSES):
     merged_conv3d_1 = tf.layers.conv3d(concated, 512, (2, 1, 1), (1, 1, 1), activation = my_leaky_relu, name = ('discriminator_merged_conv3d_1'))
-    #print(merged_conv3d_1)
-    reshape = tf.reshape(merged_conv3d_1, [-1,512*3])
-    #print(reshape)
-    dense = tf.layers.dense(reshape, 1, name='discriminiator_dense_out')
-    #print(dense)
+    reshape = tf.reshape(merged_conv3d_1, [-1, 512*3])
+    dense = tf.layers.dense(reshape, 1, activation = 'softmax', name='classifier_dense_out')
     return dense
 
+  #print(refiner_out.get_shape())
   private_out = []
   for i in range(NUM_TRACKS):
     track = tf.expand_dims(refiner_out[:,:,:,:, i],axis=-1)
     private_out.append (merged_private(tf.concat([pitch_time_private(track, i), time_pitch_private(track, i)], -1), i))
 
   private_discriminator_out = tf.concat(private_out,-1)
-  #print(private_discriminator_out)
-  private_discriminator_out = tf.reshape(private_discriminator_out, [-1, 4, 16, 7, 64])
-  #print(private_discriminator_out)
-  shared_discriminator_out = tf.reshape(shared_discriminator(private_discriminator_out), [-1, 4, 1, 1, 5*256])
-  #print(shared_discriminator_out)
+  #print(private_discriminator_out.get_shape())
 
+  shared_discriminator_out = shared_discriminator(private_discriminator_out)
+  #print(shared_discriminator_out.get_shape())
   chroma_out = Chroma(refiner_out)
   onset_out = Onset(refiner_out)
+  #print(chroma_out.get_shape())
+  #print(onset_out.get_shape())
+  #exit()
   concated = tf.concat([shared_discriminator_out, chroma_out, onset_out], -1)
+  #concated = tf.concat([chroma_out, onset_out], -1)
   #print(concated)
-  discrminiator_out = Merged_Discriminator(concated)
-  return discrminiator_out
+  discriminator_out = Merged_Discriminator(concated, NUM_CLASSES)
+  return discriminator_out
+
+"""
+def Classifierv2(residual_input, NUM_LAYERS, NUM_CLASSES):
+  def my_leaky_relu(x):
+    return tf.nn.leaky_relu(x, alpha=.5)
+
+  def Residual_Unit(residual_input, residual_layer):
+
+    #Looks at pitches
+    conv3d_1 = tf.layers.conv3d(residual_input, 60, (1, 1, 12), (1, 1, 12), activation = my_leaky_relu, padding = 'same', name = ('classifier_conv3d_1_'+str(residual_layer)))
+    bn_1 = tf.layers.batch_normalization(conv3d_1, name=('classifier_batch_norm_1'+str(residual_layer)))
+    #print(bn_1)
+    conv3d_2 = tf.layers.conv3d(bn_1, 60, (1, 1, 2), (1, 1, 1), activation = my_leaky_relu, padding = 'same', name = ('classifier_conv3d_2_'+str(residual_layer)))
+    bn_2 = tf.layers.batch_normalization(conv3d_2, name=('classifier_batch_norm_2'+str(residual_layer)))
+    #print(bn_2)
+    #dropout_1 = tf.nn.dropout(bn_2, 0.3, name = ('classifier_dropout_1'+str(residual_layer)))
+
+    #Looks at temporal nature
+    tp_conv3d_3 = tf.layers.conv3d(bn_2, 60, (1, 6, 1), (1, 1, 1), activation = my_leaky_relu, dilation_rate = 16, padding = 'same', name = ('classifier_conv3d_3_'+str(residual_layer)))
+    bn_3 = tf.layers.batch_normalization(tp_conv3d_3, name=('classifier_batch_norm_3'+str(residual_layer)))
+    #print(bn_3)
+    tp_conv3d_4 = tf.layers.conv3d(bn_3, 60, (1, 2, 1), (1, 1, 1), activation = my_leaky_relu, dilation_rate = 8, padding = 'same', name = ('classifier_conv3d_4_'+str(residual_layer)))
+    bn_4 = tf.layers.batch_normalization(tp_conv3d_4, name=('classifier_batch_norm_4'+str(residual_layer)))
+    #print(bn_4)
+    tp_conv3d_5 = tf.layers.conv3d(bn_4, 60, (1, 2, 1), (1, 1, 1), activation = my_leaky_relu, dilation_rate = 4, padding = 'same', name = ('classifier_conv3d_5_'+str(residual_layer)))
+    bn_5 = tf.layers.batch_normalization(tp_conv3d_5, name=('classifier_batch_norm_5'+str(residual_layer)))
+    tp_conv3d_6 = tf.layers.conv3d(bn_4, 60, (1, 2, 1), (1, 1, 1), activation = my_leaky_relu, dilation_rate = 2, padding = 'same', name = ('classifier_conv3d_6_'+str(residual_layer)))
+    bn_6 = tf.layers.batch_normalization(tp_conv3d_5, name=('classifier_batch_norm_6'+str(residual_layer)))
+    tp_conv3d_7 = tf.layers.conv3d(bn_4, 60, (1, 2, 1), (1, 1, 1), activation = my_leaky_relu, dilation_rate = 1, padding = 'same', name = ('classifier_conv3d_7_'+str(residual_layer)))
+    bn_7 = tf.layers.batch_normalization(tp_conv3d_5, name=('classifier_batch_norm_7'+str(residual_layer)))
+    #print(bn_5)
+    #dropout_2 = tf.nn.dropout(bn_5, 0.3, name = ('classifier_dropout_2'+str(residual_layer)))
+
+    #Looks at adjacent bars
+    tp_conv3d_8 = tf.layers.conv3d(bn_7, 60, (2, 1, 1), (1, 1, 1), activation = my_leaky_relu, padding = 'same', name = ('classifier_conv3d_8_'+str(residual_layer)))
+    bn_8 = tf.layers.batch_normalization(tp_conv3d_8, name=('classifier_batch_norm_8'+str(residual_layer)))
+    #print(bn_6)
+    #dropout_3 = tf.nn.dropout(bn_8, 0.3, name = ('classifier_dropout_3'+str(residual_layer)))
+
+
+    residual_out = tf.add(residual_input, tf.reshape(bn_8, [-1,4,96,84,5]), name = ('classifier_add_'+str(residual_layer)))
+
+    return residual_out
+
+
+  for i in range(NUM_LAYERS):
+    residual_input = Residual_Unit(residual_input, i)
+
+  print(residual_input)
+
+  reduce_mean = tf.reduce_sum(residual_input, [1,2,3,4])
+  print(reduce_mean)
+  reshape = tf.reshape(reduce_mean, [-1, 1])
+  return tf.layers.dense(reshape, NUM_CLASSES, activation = 'softmax', name='classifier_dense_out')
+"""
+
 
 
 def Classifier(refiner_out, NUM_TRACKS, NUM_CLASSES):
@@ -371,16 +427,15 @@ def Classifier(refiner_out, NUM_TRACKS, NUM_CLASSES):
 
   #Chroma: reduce along octaves and tracks to determine chroma and then pass that into chroma discriminator
   def Chroma(refiner_out):
-    reshape = tf.transpose(tf.reshape(refiner_out, [-1,5, 4, 4, 24, 7, 12]), [0,2,3,4,5,6,1], name = 'classifier_chroma_reshape')
+    reshape = tf.reshape(refiner_out, [-1, 4, 4, 24, 7, 12, 5], name = 'classifier_chroma_reshape')
     sum_1 = tf.reduce_sum(reshape, axis=(3, 4), name = 'classifier_chroma_sum')
     chroma_conv3d_1 = tf.layers.conv3d(sum_1, 64, (1, 1, 12), (1, 1, 12), activation = my_leaky_relu, name = ('classifier_chroma_conv3d_1'))
     chroma_conv3d_2 = tf.layers.conv3d(chroma_conv3d_1, 128, (1, 4, 1), (1, 4, 1), activation = my_leaky_relu, name = ('classifier_chroma_conv3d_2'))
     return chroma_conv3d_2
 
   def Onset(refiner_out):
-    reshape = tf.transpose(tf.reshape(refiner_out, [-1,5, 4, 96, 84]), [0,2,3,4,1])
-    padded = tf.pad(reshape[:, :, :-1, :, 1:], [[0, 0], [0, 0], [1, 0], [0, 0], [0, 0]])
-    onset = tf.concat([tf.expand_dims(reshape[..., 0], -1), reshape[..., 1:] - padded], -1)
+    padded = tf.pad(refiner_out[:, :, :-1, :, 1:], [[0, 0], [0, 0], [1, 0], [0, 0], [0, 0]])
+    onset = tf.concat([tf.expand_dims(refiner_out[..., 0], -1), refiner_out[..., 1:] - padded], -1)
     sum_1 = tf.reduce_sum(onset, 3, keepdims = True, name='classifier_onset_sum')
     onset_conv3d_1 = tf.layers.conv3d(sum_1, 32, (1, 6, 1), (1, 6, 1), activation = my_leaky_relu, name = ('classifier_onset_conv3d_1'))
     onset_conv3d_2 = tf.layers.conv3d(onset_conv3d_1, 64, (1, 4, 1), (1, 4, 1), activation = my_leaky_relu, name = ('classifier_onset_conv3d_2'))
@@ -393,20 +448,28 @@ def Classifier(refiner_out, NUM_TRACKS, NUM_CLASSES):
     dense = tf.layers.dense(reshape, NUM_CLASSES, activation = 'softmax', name='classifier_dense_out')
     return dense
 
+  #print(refiner_out.get_shape())
   private_out = []
   for i in range(NUM_TRACKS):
     track = tf.expand_dims(refiner_out[:,:,:,:, i],axis=-1)
     private_out.append (merged_private(tf.concat([pitch_time_private(track, i), time_pitch_private(track, i)], -1), i))
 
   private_discriminator_out = tf.concat(private_out,-1)
-  private_discriminator_out = tf.reshape(private_discriminator_out, [-1, 4, 16, 7, 64])
-  shared_discriminator_out = tf.reshape(shared_discriminator(private_discriminator_out), [-1, 4, 1, 1, 5*256])
+  #print(private_discriminator_out.get_shape())
+
+  shared_discriminator_out = shared_discriminator(private_discriminator_out)
+  #print(shared_discriminator_out.get_shape())
   chroma_out = Chroma(refiner_out)
   onset_out = Onset(refiner_out)
+  #print(chroma_out.get_shape())
+  #print(onset_out.get_shape())
+  #exit()
   concated = tf.concat([shared_discriminator_out, chroma_out, onset_out], -1)
-  print(concated)
+  #concated = tf.concat([chroma_out, onset_out], -1)
+  #print(concated)
   classifier_out = Merged_Classifier(concated, NUM_CLASSES)
   return classifier_out
+
 
 
 def Refiner(generator_out, NUM_TRACKS, RESIDUAL_LAYERS, SLOPE_TENSOR):
@@ -454,8 +517,8 @@ class Loss_Functions():
     self.classifier_coefficient = 1-discriminator_coefficient_coefficient
     self.gradient_penalty = gradient_penalty
 
-def classifier_loss(data, labels, label_smoothing): # if label smoothing nonzero then is used
-  return tf.losses.softmax_cross_entropy(labels, data, label_smoothing= label_smoothing)
+def classifier_loss(data, labels, label_smoothing, confidence_penalty): # if label smoothing nonzero then is used
+  return tf.losses.softmax_cross_entropy(labels, data, label_smoothing= label_smoothing) + confidence_penalty*tf.reduce_sum(data*tf.log(data))
 
 
 def adverserial_loss(D_fake_data, D_real_data, real_input_data, G_out, gradient_penalty): #WGAN with gradient penalty
@@ -493,24 +556,25 @@ class Data(object):
 
         # Start next epoch
         start = 0
-        self.index_in_epoch = batch_size
-        assert batch_size <= self.num_examples
+        self.index_in_epoch = BATCH_SIZE
+        assert BATCH_SIZE <= self.num_examples
     end = self.index_in_epoch
 
     #This unzipping is done to save on storage and memeory since the files are mostly 0's
     npz_data = [np.load(join(self.path,element))["data"] for element in self.songs[start:end]] #uncompress all npz files and load in "data" array
-    batch_data = [element[0] for element in npz_data] #corresponds to the songs data which is stored in the first element of the data array
+    batch_data = [element[0].astype(bool) for element in npz_data] #corresponds to the songs data which is stored in the first element of the data array
     batch_label = [GENRE_LIST.index(element[1]) for element in npz_data]  #corresponds to the label fo the song stored inteh first element of the data array
 
     return batch_data, batch_label
 
 #BULD FULL MODEL FOR TESTING SHAPES
 def main():
+    """
     tf.reset_default_graph()
 
     print("\n\n")
     print("Defining placeholders...")
-    input_genre = tf.placeholder(dtype = tf.int32, shape = 1)
+    input_genre = tf.placeholder(dtype = tf.bool, shape = 1)
     latent_vector = tf.placeholder(dtype = tf.float32, shape = [None,LATENT_SIZE])
     real_data = tf.placeholder(dtype = tf.bool, shape = [None, NUM_BARS, BEATS_PER_BAR, NUM_NOTES, NUM_TRACKS])
     real_data = tf.cast(real_data, dtype= tf.float32)
@@ -519,7 +583,8 @@ def main():
     generator_out = Generator(input_genre, latent_vector, LATENT_SIZE, NUM_TRACKS, NUM_CLASSES)
     refiner_out = Refiner(generator_out, NUM_TRACKS, RESIDUAL_LAYERS, SLOPE_TENSOR)
     discriminiator_out = Discriminator(real_data, NUM_TRACKS)
-    classifier_out = Classifier(real_data, NUM_TRACKS, NUM_CLASSES)
+    classifier_out = Classifierv2(real_data, NUM_LAYERS, NUM_CLASSES)
+    #classifier_out = Classifier(refiner_out, NUM_TRACKS, NUM_CLASSES)
 
     #print("Real_data", real_data)
     print("\n\n")
@@ -527,7 +592,7 @@ def main():
     print("Refiner out: ", refiner_out)
     print("Discriminator out: ", discriminiator_out)
     print("Classifier out: ", classifier_out)
-    print("\n\n")
+    print("\n\n")"""
 
     #TRAIN CLASSIFIER
     tf.reset_default_graph()
@@ -541,12 +606,13 @@ def main():
     labels = tf.one_hot(real_data_labels, NUM_CLASSES)
 
     #Buld Classifier
+    #classifier_out = Classifierv2(real_data, NUM_LAYERS, NUM_CLASSES)
     classifier_out = Classifier(real_data, NUM_TRACKS, NUM_CLASSES)
 
     #classifier_loss_functions = Loss_Functions(gp_coefficient = 1, discriminator_coefficient = 0.5)
-    classifier_cce_loss = classifier_loss(classifier_out, labels, True)
-    classifier_varlist = list(filter(lambda a : "classifier" in a.name, [v for v in tf.trainable_variables()]))
-    optim = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE, beta1=0.9, beta2=0.999, epsilon=1e-08, use_locking=False, name='Classifier_Optimizer').minimize(classifier_cce_loss, var_list=classifier_varlist)
+    classifier_cce_loss = classifier_loss(classifier_out, labels, 0, 0.03)
+    #classifier_varlist = list(filter(lambda a : "classifier" in a.name, [v for v in tf.trainable_variables()]))
+    optim = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE, beta1=0.9, beta2=0.999, epsilon=1e-08, use_locking=False, name='Classifier_Optimizer').minimize(classifier_cce_loss)
 
     classifier_accuracy, acc_op = tf.metrics.accuracy(real_data_labels, tf.argmax(classifier_out, 1))
 
@@ -558,43 +624,53 @@ def main():
     sess.run(init_l)
     saver = tf.train.Saver()
 
+    print(LEARNING_RATE)
+
     data_path = abspath(sys.argv[1])
     print("Loading in Data from: ", data_path)
     data = Data(data_path) #Path to directory containing music set
 
-    models_directory = join(os.getcwd(), "saved_models")
+    models_directory = join(os.getcwd(), ("saved_models_" + datetime.now().strftime('%Y-%m-%d_%H:%M:%S')))
     os.makedirs(models_directory, exist_ok=True)
     accuracy_old = 0
 
-    progress = trange(int(data.num_examples/BATCH_SIZE*CLASSIFIER_EPOCHS), desc = 'Bar_desc', leave = True)
+    with open(join(models_directory, "Model.csv"), 'a') as f:
+        f.write("LOSS,ACCURACY\n")
 
+    data_batch, label_batch = data.get_batch()
+    #print(np.sum(data_batch[0]))
+    label, log_labels = sess.run([classifier_out, tf.log(classifier_out)], feed_dict={real_data: data_batch[0:2], real_data_labels: label_batch[0:2]})
+    print("Labels", labels)
+    print("LogLabels", log_labels)
+
+    #print(sess.run([classifier_out], feed_dict={real_data: data_batch, real_data_labels: label_batch}))
+
+
+
+    progress = trange(1000, desc = 'Bar_desc', leave = True)
+    #progress = trange(int(data.num_examples/BATCH_SIZE*CLASSIFIER_EPOCHS), desc = 'Bar_desc', leave = True)
 
     for t in progress:
         data_batch, label_batch = data.get_batch()
         loss_np, optim_np = sess.run([classifier_cce_loss, optim], feed_dict={real_data: data_batch, real_data_labels: label_batch})
         accuracy = sess.run([classifier_accuracy, acc_op], feed_dict={real_data: data_batch, real_data_labels: label_batch})
+
         progress.set_description(' LOSS ===> ' + str(loss_np) + ' ACCURACY ===> ' + str(accuracy[1]))
         progress.refresh()
 
+        with open(join(models_directory, "Model.csv"), 'a') as f:
+            f.write(str(loss_np) + "," + str(accuracy[1]) + "\n")
+
         if (t*BATCH_SIZE)%data.num_examples == 0:
+
             if accuracy[1]>accuracy_old:
                 accuracy_old = accuracy[1]
                 #print("Saving File")
                 filename = "model-" + str((t*BATCH_SIZE)/data.num_examples)+"-"+str(accuracy_old)
                 saver.save(sess, join(models_directory, filename))
+    print(sess.run([classifier_out], feed_dict={real_data: data_batch, real_data_labels: label_batch}))
 
 
-
-    def model_summary():
-        model_vars = tf.trainable_variables()
-        slim.model_analyzer.analyze_vars(model_vars, print_info=True)
-
-    model_summary()
-
-    layer_varlist = list(filter(lambda a : "classifier" in a.name, [v for v in tf.trainable_variables()]))
-    print(layer_varlist)
-
-    blah = tf.reshape(private_discriminator_out[-1, 4, 16, 7, 64])
 
 
 if __name__ == '__main__':
