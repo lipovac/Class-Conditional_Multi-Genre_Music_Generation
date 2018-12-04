@@ -536,15 +536,34 @@ def adverserial_loss(D_fake_data, D_real_data, real_input_data, G_out, gradient_
 class Data(object):
   def __init__(self, data_directory):
     #Only restrieves songs in folder that are from genres of interest
-    songs_list = [element for element in os.listdir(data_directory) if element.split("-")[0] in GENRE_LIST]
+    parsed_directory_list = os.listdir(data_directory)
+    genre_dictionary = {}
+
+    for genre in GENRE_LIST:
+        genre_songs_list = [element for element in parsed_directory_list if element.split("-")[0] == genre]
+        genre_dictionary[genre] = genre_songs_list
+
+    smallest_genre = max(genre_dictionary, key=lambda x:len(genre_dictionary[x]))
+    self.smallest_genre_length = len(genre_dictionary.get(smallest_genre))
 
     self.path = data_directory
-    self.songs = songs_list
+    self.genre_dictionary = genre_dictionary
+    self.songs = song_shuffler()
     self.index_in_epoch = 0
     self.num_examples = len(songs_list)
 
-    #shuffle songs so genres are well represented in first epoch
-    np.random.shuffle(self.songs)
+
+
+  def song_shuffler():
+      #shuffle equal amount of songs from each genre into song list for each epoch
+      songs_list = []
+
+      for genre in GENRE_LIST:
+          np.random.shuffle(self.genre_dictionary.get(genre))
+          songs_list.append(self.genre_dictionary.get(genre)[:self.smallest_genre_length])
+
+      np.random.shuffle(songs_list)
+      return songs_list
 
   def get_batch(self):
     start = self.index_in_epoch
@@ -552,7 +571,7 @@ class Data(object):
 
     # When all the training data is ran, shuffles it
     if self.index_in_epoch > self.num_examples:
-        np.random.shuffle(self.songs)
+        self.songs = song_shuffler()
 
         # Start next epoch
         start = 0
@@ -630,11 +649,11 @@ def main():
     print("Loading in Data from: ", data_path)
     data = Data(data_path) #Path to directory containing music set
 
-    models_directory = join(os.getcwd(), ("saved_models_" + datetime.now().strftime('%Y-%m-%d_%H:%M:%S')))
+    models_directory = join(sys.argv[2], ("saved_models_" + datetime.now().strftime('%Y-%m-%d_%H:%M:%S')))
     os.makedirs(models_directory, exist_ok=True)
     accuracy_old = 0
 
-    with open(join(models_directory, "Model.csv"), 'a') as f:
+    with open(join(models_directory, "Model.csv"), 'w') as f:
         f.write("LOSS,ACCURACY\n")
 
     data_batch, label_batch = data.get_batch()
