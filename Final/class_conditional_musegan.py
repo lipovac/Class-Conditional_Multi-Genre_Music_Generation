@@ -338,10 +338,10 @@ def Discriminator(refiner_out, NUM_TRACKS):
   discriminator_out = Merged_Discriminator(concated, NUM_CLASSES)
   return discriminator_out
 
-"""
+
 def Classifierv2(residual_input, NUM_LAYERS, NUM_CLASSES):
   def my_leaky_relu(x):
-    return tf.nn.leaky_relu(x, alpha=.5)
+    return tf.nn.leaky_relu(x, alpha=.0)
 
   def Residual_Unit(residual_input, residual_layer):
 
@@ -376,8 +376,8 @@ def Classifierv2(residual_input, NUM_LAYERS, NUM_CLASSES):
     #print(bn_6)
     #dropout_3 = tf.nn.dropout(bn_8, 0.3, name = ('classifier_dropout_3'+str(residual_layer)))
 
-
-    residual_out = tf.add(residual_input, tf.reshape(bn_8, [-1,4,96,84,5]), name = ('classifier_add_'+str(residual_layer)))
+    residual_out = tp_conv3d_8
+    #residual_out = tf.add(residual_input, tf.reshape(bn_8, [-1,4,96,84,5]), name = ('classifier_add_'+str(residual_layer)))
 
     return residual_out
 
@@ -387,14 +387,13 @@ def Classifierv2(residual_input, NUM_LAYERS, NUM_CLASSES):
 
   print(residual_input)
 
-  reduce_mean = tf.reduce_sum(residual_input, [1,2,3,4])
-  print(reduce_mean)
-  reshape = tf.reshape(reduce_mean, [-1, 1])
-  return tf.layers.dense(reshape, NUM_CLASSES, activation = 'softmax', name='classifier_dense_out')
+  reduce_sum = tf.reduce_sum(residual_input, [1,2,3,4])
+  print(reduce_sum)
+  return tf.layers.dense(tf.reshape(reduce_sum, [-1, 1]), NUM_CLASSES, name='classifier_dense_out')
+
+
+
 """
-
-
-
 def Classifier(refiner_out, NUM_TRACKS, NUM_CLASSES):
   def my_leaky_relu(x):
     return tf.nn.leaky_relu(x, alpha=.5)
@@ -470,6 +469,7 @@ def Classifier(refiner_out, NUM_TRACKS, NUM_CLASSES):
   #classifier_out = Merged_Classifier(tf.concat([chroma_out, onset_out], -1), NUM_CLASSES)
   classifier_out = Merged_Classifier(concated, NUM_CLASSES)
   return classifier_out
+  """
 
 
 
@@ -607,8 +607,8 @@ def main():
     labels = tf.one_hot(real_data_labels, NUM_CLASSES)
 
     #Buld Classifier
-    #classifier_out = Classifierv2(real_data, NUM_LAYERS, NUM_CLASSES)
-    classifier_out = Classifier(real_data, NUM_TRACKS, NUM_CLASSES)
+    classifier_out = Classifierv2(real_data, NUM_LAYERS, NUM_CLASSES)
+    #classifier_out = Classifier(real_data, NUM_TRACKS, NUM_CLASSES)
 
     #classifier_loss_functions = Loss_Functions(gp_coefficient = 1, discriminator_coefficient = 0.5)
     classifier_cce_loss = classifier_loss(classifier_out, labels, 0, 0)
@@ -640,15 +640,15 @@ def main():
 
     data_batch, label_batch = data.get_batch()
     #print(np.sum(data_batch[0]))
-    #label, log_labels = sess.run([classifier_out, tf.log(classifier_out)], feed_dict={real_data: data_batch[0:2], real_data_labels: label_batch[0:2]})
-    #print("Labels", labels)
+    classifier_out = sess.run([classifier_out], feed_dict={real_data: data_batch[0:2], real_data_labels: label_batch[0:2]})
+    print("classifier_out", classifier_out)
     #print("LogLabels", log_labels)
 
     #print(sess.run([classifier_out], feed_dict={real_data: data_batch, real_data_labels: label_batch}))
 
 
 
-    progress = trange(10, desc = 'Bar_desc', leave = True)
+    progress = trange(1000, desc = 'Bar_desc', leave = True)
     #progress = trange(int(data.num_examples/BATCH_SIZE*CLASSIFIER_EPOCHS), desc = 'Bar_desc', leave = True)
 
     for t in progress:
