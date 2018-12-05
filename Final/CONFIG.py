@@ -14,5 +14,10 @@ SLOPE_TENSOR = 1.1
 
 #CLASSIFIER TRAINING HYPER PARAMETERS
 CLASSIFIER_EPOCHS = 5
+<<<<<<< HEAD
 LEARNING_RATE = 0.0001
 GENRE_LIST = ['alternative', 'rock', 'classic']
+=======
+LEARNING_RATE = 0.00001
+GENRE_LIST = ['dance']
+>>>>>>> cf5efa6050fee3e72e828ccc2dade0beb28cde64
