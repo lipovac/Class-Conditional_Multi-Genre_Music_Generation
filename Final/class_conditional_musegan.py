@@ -549,19 +549,17 @@ class Data(object):
 
     self.path = data_directory
     self.genre_dictionary = genre_dictionary
-    self.songs = song_shuffler()
+    self.songs = self.song_shuffler()
     self.index_in_epoch = 0
-    self.num_examples = len(songs_list)
+    self.num_examples = len(self.songs)
 
-
-
-  def song_shuffler():
+  def song_shuffler(self):
       #shuffle equal amount of songs from each genre into song list for each epoch
       songs_list = []
 
       for genre in GENRE_LIST:
           np.random.shuffle(self.genre_dictionary.get(genre))
-          songs_list.append(self.genre_dictionary.get(genre)[:self.smallest_genre_length])
+          songs_list += self.genre_dictionary.get(genre)[:self.smallest_genre_length]
 
       np.random.shuffle(songs_list)
       return songs_list
@@ -572,7 +570,7 @@ class Data(object):
 
     # When all the training data is ran, shuffles it
     if self.index_in_epoch > self.num_examples:
-        self.songs = song_shuffler()
+        self.songs = self.song_shuffler()
 
         # Start next epoch
         start = 0
