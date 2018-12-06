@@ -214,34 +214,34 @@ def Generator(input_genre, latent_vector, LATENT_SIZE, NUM_TRACKS, NUM_CLASSES):
 
   #Shared Generator
   def shared_generator(class_input):
-    dense_1 = tf.layers.dense(class_input, (3*512), activation = 'relu', name='generator_dense_1')
+    dense_1 = tf.layers.dense(class_input, (3*1024), activation = 'relu', name='generator_dense_1')
     bn_1 = tf.layers.batch_normalization(dense_1, name='generator_batch_norm_1')
-    reshape_1 = tf.reshape(bn_1, [-1,3,1,1,512], name = 'generator_reshape_1')
-    trans_conv3d_1 = tf.layers.conv3d_transpose(reshape_1, 256, (2, 1, 1), (1, 1, 1), activation = 'relu', name='generator_transconv3d_1')
+    reshape_1 = tf.reshape(bn_1, [-1,3,1,1,1024], name = 'generator_reshape_1')
+    trans_conv3d_1 = tf.layers.conv3d_transpose(reshape_1, 512, (2, 1, 1), (1, 1, 1), activation = 'relu', name='generator_transconv3d_1')
     bn_2 = tf.layers.batch_normalization(trans_conv3d_1, name='generator_batch_norm_2')
-    trans_conv3d_2 =  tf.layers.conv3d_transpose(bn_2, 128, (1, 4, 1), (1, 4, 1), activation = 'relu', name='generator_transconv3d_2')
+    trans_conv3d_2 =  tf.layers.conv3d_transpose(bn_2, 256, (1, 4, 1), (1, 4, 1), activation = 'relu', name='generator_transconv3d_2')
     bn_3 = tf.layers.batch_normalization(trans_conv3d_2, name='generator_batch_norm_3')
-    trans_conv3d_3 =  tf.layers.conv3d_transpose(bn_3, 128, (1, 1, 3), (1, 1, 3), activation = 'relu', name='generator_transconv3d_3')
+    trans_conv3d_3 =  tf.layers.conv3d_transpose(bn_3, 256, (1, 1, 3), (1, 1, 3), activation = 'relu', name='generator_transconv3d_3')
     bn_4 = tf.layers.batch_normalization(trans_conv3d_3, name='generator_batch_norm_4')
-    trans_conv3d_4 =  tf.layers.conv3d_transpose(bn_4, 64, (1, 4, 1), (1, 4, 1), activation = 'relu', name='generator_transconv3d_4')
+    trans_conv3d_4 =  tf.layers.conv3d_transpose(bn_4, 128, (1, 4, 1), (1, 4, 1), activation = 'relu', name='generator_transconv3d_4')
     bn_5 = tf.layers.batch_normalization(trans_conv3d_4, name='generator_batch_norm_5')
-    trans_conv3d_5 =  tf.layers.conv3d_transpose(bn_5, 64, (1, 1, 3), (1, 1, 2), activation = 'relu', name='generator_transconv3d_5')
+    trans_conv3d_5 =  tf.layers.conv3d_transpose(bn_5, 128, (1, 1, 3), (1, 1, 2), activation = 'relu', name='generator_transconv3d_5')
     shared_out = tf.layers.batch_normalization(trans_conv3d_5, name='generator_batch_norm_6')
     #print(shared_out)
     return shared_out
 
   #Private Generator
   def pitch_time_private(shared_out, track_num):
-    pt_conv3d_1 = tf.layers.conv3d_transpose(shared_out, 64, (1, 1, 12), (1, 1, 12), activation = 'relu', name = ('generator_pt_conv3d_1'+str(track_num)))
+    pt_conv3d_1 = tf.layers.conv3d_transpose(shared_out, 128, (1, 1, 12), (1, 1, 12), activation = 'relu', name = ('generator_pt_conv3d_1'+str(track_num)))
     pt_bn_1 = tf.layers.batch_normalization(pt_conv3d_1, name=('generator_pt_bn_1'+str(track_num)))
-    pt_conv3d_2 = tf.layers.conv3d_transpose(pt_bn_1, 32, (1, 6, 1), (1, 6, 1), activation = 'relu', name = ('generator_pt_conv3d_2'+str(track_num)))
+    pt_conv3d_2 = tf.layers.conv3d_transpose(pt_bn_1, 64, (1, 6, 1), (1, 6, 1), activation = 'relu', name = ('generator_pt_conv3d_2'+str(track_num)))
     pt_bn_2 = tf.layers.batch_normalization(pt_conv3d_2, name=('generator_pt_bn_2'+str(track_num)))
     return pt_bn_2
 
   def time_pitch_private(shared_out, track_num):
-    tp_conv3d_1 = tf.layers.conv3d_transpose(shared_out, 64, (1, 6, 1), (1, 6, 1), activation = 'relu', name = ('generator_tp_conv3d_1'+str(track_num)))
+    tp_conv3d_1 = tf.layers.conv3d_transpose(shared_out, 128, (1, 6, 1), (1, 6, 1), activation = 'relu', name = ('generator_tp_conv3d_1'+str(track_num)))
     tp_bn_1 = tf.layers.batch_normalization(tp_conv3d_1, name=('generator_tp_bn_1'+str(track_num)))
-    tp_conv3d_2 = tf.layers.conv3d_transpose(tp_bn_1, 32, (1, 1, 12), (1, 1, 12), activation = 'relu', name = ('generator_tp_conv3d_2'+str(track_num)))
+    tp_conv3d_2 = tf.layers.conv3d_transpose(tp_bn_1, 64, (1, 1, 12), (1, 1, 12), activation = 'relu', name = ('generator_tp_conv3d_2'+str(track_num)))
     tp_bn_2 = tf.layers.batch_normalization(tp_conv3d_2, name= ('generator_tp_bn_2'+str(track_num)))
     return tp_bn_2
 
@@ -269,51 +269,51 @@ def Discriminator(refiner_out, NUM_TRACKS):
 
   #Private Discriminiator
   def pitch_time_private(refiner_out, track_num):
-    pt_conv3d_1 = tf.layers.conv3d(refiner_out, 32, (1, 1, 12), (1, 1, 12), activation = my_leaky_relu, name = ('discriminator_pt_conv3d_1'+str(track_num)))
+    pt_conv3d_1 = tf.layers.conv3d(refiner_out, 64, (1, 1, 12), (1, 1, 12), activation = my_leaky_relu, name = ('discriminator_pt_conv3d_1'+str(track_num)))
     #pt_bn_1 = tf.layers.batch_normalization(pt_conv3d_1, name=('d_pt_bn_1'+str(track_num)))
-    pt_conv3d_2 = tf.layers.conv3d(pt_conv3d_1, 64, (1, 6, 1), (1, 6, 1), activation = my_leaky_relu, name = ('discriminator_pt_conv3d_2'+str(track_num)))
+    pt_conv3d_2 = tf.layers.conv3d(pt_conv3d_1, 128, (1, 6, 1), (1, 6, 1), activation = my_leaky_relu, name = ('discriminator_pt_conv3d_2'+str(track_num)))
     #pt_bn_2 = tf.layers.batch_normalization(pt_conv3d_2, name=('d_pt_bn_2'+str(track_num)))
     return pt_conv3d_2
 
   def time_pitch_private(refiner_out, track_num):
-    tp_conv3d_1 = tf.layers.conv3d(refiner_out, 32, (1, 6, 1), (1, 6, 1), activation = my_leaky_relu, name = ('discriminator_tp_conv3d_1'+str(track_num)))
+    tp_conv3d_1 = tf.layers.conv3d(refiner_out, 64, (1, 6, 1), (1, 6, 1), activation = my_leaky_relu, name = ('discriminator_tp_conv3d_1'+str(track_num)))
     #tp_bn_1 = tf.layers.batch_normalization(tp_conv3d_1, name=('d_tp_bn_1'+str(track_num)))
-    tp_conv3d_2 = tf.layers.conv3d(tp_conv3d_1, 64, (1, 1, 12), (1, 1, 12), activation = my_leaky_relu, name = ('discriminator_tp_conv3d_2'+str(track_num)))
+    tp_conv3d_2 = tf.layers.conv3d(tp_conv3d_1, 128, (1, 1, 12), (1, 1, 12), activation = my_leaky_relu, name = ('discriminator_tp_conv3d_2'+str(track_num)))
     #tp_bn_2 = tf.layers.batch_normalization(tp_conv3d_2, name= ('d_tp_bn_2'+str(track_num)))
     return tp_conv3d_2
 
   def merged_private(private_out, track_num):
-    merged_conv3d = tf.layers.conv3d(private_out, 64, (1, 1, 1), (1, 1, 1), activation = my_leaky_relu, name = ('discriminator_merged_conv3d'+str(track_num)))
+    merged_conv3d = tf.layers.conv3d(private_out, 128, (1, 1, 1), (1, 1, 1), activation = my_leaky_relu, name = ('discriminator_merged_conv3d'+str(track_num)))
     #merged_bn = tf.layers.batch_normalization(merged_conv3d, name=('d_merged_bn'+str(track_num)))
     return merged_conv3d
 
   #Shared Discriminiator
   def shared_discriminator(private_discriminator_out):
-    conv3d_1 = tf.layers.conv3d(private_discriminator_out, 128, (1, 4, 3), (1, 4, 2), activation = my_leaky_relu, name = ('discriminator_conv3d_1'))
-    conv3d_2 = tf.layers.conv3d(conv3d_1, 256, (1, 4, 3), (1, 4, 2), activation = my_leaky_relu, name = ('discriminator_conv3d_2'))
+    conv3d_1 = tf.layers.conv3d(private_discriminator_out, 256, (1, 4, 3), (1, 4, 2), activation = my_leaky_relu, name = ('discriminator_conv3d_1'))
+    conv3d_2 = tf.layers.conv3d(conv3d_1, 512, (1, 4, 3), (1, 4, 2), activation = my_leaky_relu, name = ('discriminator_conv3d_2'))
     return conv3d_2
 
   #Chroma: reduce along octaves and tracks to determine chroma and then pass that into chroma discriminator
   def Chroma(refiner_out):
     reshape = tf.reshape(refiner_out, [-1, 4, 4, 24, 7, 12, 5], name = 'discriminator_chroma_reshape')
     sum_1 = tf.reduce_sum(reshape, axis=(3, 4), name = 'discriminator_chroma_sum')
-    chroma_conv3d_1 = tf.layers.conv3d(sum_1, 64, (1, 1, 12), (1, 1, 12), activation = my_leaky_relu, name = ('discriminator_chroma_conv3d_1'))
-    chroma_conv3d_2 = tf.layers.conv3d(chroma_conv3d_1, 128, (1, 4, 1), (1, 4, 1), activation = my_leaky_relu, name = ('discriminator_chroma_conv3d_2'))
+    chroma_conv3d_1 = tf.layers.conv3d(sum_1, 128, (1, 1, 12), (1, 1, 12), activation = my_leaky_relu, name = ('discriminator_chroma_conv3d_1'))
+    chroma_conv3d_2 = tf.layers.conv3d(chroma_conv3d_1, 256, (1, 4, 1), (1, 4, 1), activation = my_leaky_relu, name = ('discriminator_chroma_conv3d_2'))
     return chroma_conv3d_2
 
   def Onset(refiner_out):
     padded = tf.pad(refiner_out[:, :, :-1, :, 1:], [[0, 0], [0, 0], [1, 0], [0, 0], [0, 0]])
     onset = tf.concat([tf.expand_dims(refiner_out[..., 0], -1), refiner_out[..., 1:] - padded], -1)
     sum_1 = tf.reduce_sum(onset, 3, keepdims = True, name='discriminator_onset_sum')
-    onset_conv3d_1 = tf.layers.conv3d(sum_1, 32, (1, 6, 1), (1, 6, 1), activation = my_leaky_relu, name = ('discriminator_onset_conv3d_1'))
-    onset_conv3d_2 = tf.layers.conv3d(onset_conv3d_1, 64, (1, 4, 1), (1, 4, 1), activation = my_leaky_relu, name = ('discriminator_onset_conv3d_2'))
-    onset_conv3d_3 = tf.layers.conv3d(onset_conv3d_2, 128, (1, 4, 1), (1, 4, 1), activation = my_leaky_relu, name = ('discriminator_onset_conv3d_3'))
+    onset_conv3d_1 = tf.layers.conv3d(sum_1, 64, (1, 6, 1), (1, 6, 1), activation = my_leaky_relu, name = ('discriminator_onset_conv3d_1'))
+    onset_conv3d_2 = tf.layers.conv3d(onset_conv3d_1, 128, (1, 4, 1), (1, 4, 1), activation = my_leaky_relu, name = ('discriminator_onset_conv3d_2'))
+    onset_conv3d_3 = tf.layers.conv3d(onset_conv3d_2, 256, (1, 4, 1), (1, 4, 1), activation = my_leaky_relu, name = ('discriminator_onset_conv3d_3'))
     return onset_conv3d_3
 
-  def Merged_Discriminator(concated, NUM_CLASSES):
-    merged_conv3d_1 = tf.layers.conv3d(concated, 512, (2, 1, 1), (1, 1, 1), activation = my_leaky_relu, name = ('discriminator_merged_conv3d_1'))
-    reshape = tf.reshape(merged_conv3d_1, [-1, 512*3])
-    dense = tf.layers.dense(reshape, 1, activation = 'softmax', name='classifier_dense_out')
+  def Merged_Discriminator(concated):
+    merged_conv3d_1 = tf.layers.conv3d(concated, 1024, (2, 1, 1), (1, 1, 1), activation = my_leaky_relu, name = ('discriminator_merged_conv3d_1'))
+    reshape = tf.reshape(merged_conv3d_1, [-1, 1024*3])
+    dense = tf.layers.dense(reshape, 1, name='discriminator_dense_out')
     return dense
 
   #print(refiner_out.get_shape())
@@ -323,75 +323,32 @@ def Discriminator(refiner_out, NUM_TRACKS):
     private_out.append (merged_private(tf.concat([pitch_time_private(track, i), time_pitch_private(track, i)], -1), i))
 
   private_discriminator_out = tf.concat(private_out,-1)
+  #print(private_discriminator_out)
+  #exit()
   #print(private_discriminator_out.get_shape())
 
   shared_discriminator_out = shared_discriminator(private_discriminator_out)
+  num_features_1= shared_discriminator_out.get_shape()[1]*shared_discriminator_out.get_shape()[2]*shared_discriminator_out.get_shape()[3]*shared_discriminator_out.get_shape()[4]
+  discriminator_out_1 = tf.layers.dense(tf.reshape(shared_discriminator_out, [-1, num_features_1]),NUM_CLASSES, name='discriminator_dense_out1')
   #print(shared_discriminator_out.get_shape())
   chroma_out = Chroma(refiner_out)
+  #print(chroma_out)
+  num_features_2= chroma_out.get_shape()[1]*chroma_out.get_shape()[2]*chroma_out.get_shape()[3]*chroma_out.get_shape()[4]
+  #print(num_features_2)
+#print(tf.reshape(chroma_out [-1, 1, 1, 1, num_features_2]))
+  discriminator_out_2 = tf.layers.dense(tf.reshape(chroma_out, [-1, num_features_2]),NUM_CLASSES, name='discriminator_dense_out2')
   onset_out = Onset(refiner_out)
+  num_features_3= onset_out.get_shape()[1]*onset_out.get_shape()[2]*onset_out.get_shape()[3]*onset_out.get_shape()[4]
+  discriminator_out_3 = tf.layers.dense(tf.reshape(onset_out, [-1, num_features_3]),NUM_CLASSES, name='discriminator_dense_out3')
   #print(chroma_out.get_shape())
   #print(onset_out.get_shape())
   #exit()
   concated = tf.concat([shared_discriminator_out, chroma_out, onset_out], -1)
   #concated = tf.concat([chroma_out, onset_out], -1)
   #print(concated)
-  discriminator_out = Merged_Discriminator(concated, NUM_CLASSES)
-  return discriminator_out
-
-"""
-def Classifierv2(residual_input, NUM_LAYERS, NUM_CLASSES):
-  def my_leaky_relu(x):
-    return tf.nn.leaky_relu(x, alpha=.0)
-
-  def Residual_Unit(residual_input, residual_layer):
-
-    #Looks at pitches
-    conv3d_1 = tf.layers.conv3d(residual_input, 60, (1, 1, 12), (1, 1, 12), activation = my_leaky_relu, padding = 'same', name = ('classifier_conv3d_1_'+str(residual_layer)))
-    bn_1 = tf.layers.batch_normalization(conv3d_1, name=('classifier_batch_norm_1'+str(residual_layer)))
-    #print(bn_1)
-    conv3d_2 = tf.layers.conv3d(bn_1, 60, (1, 1, 2), (1, 1, 1), activation = my_leaky_relu, padding = 'same', name = ('classifier_conv3d_2_'+str(residual_layer)))
-    bn_2 = tf.layers.batch_normalization(conv3d_2, name=('classifier_batch_norm_2'+str(residual_layer)))
-    #print(bn_2)
-    #dropout_1 = tf.nn.dropout(bn_2, 0.3, name = ('classifier_dropout_1'+str(residual_layer)))
-
-    #Looks at temporal nature
-    tp_conv3d_3 = tf.layers.conv3d(bn_2, 60, (1, 6, 1), (1, 1, 1), activation = my_leaky_relu, dilation_rate = 16, padding = 'same', name = ('classifier_conv3d_3_'+str(residual_layer)))
-    bn_3 = tf.layers.batch_normalization(tp_conv3d_3, name=('classifier_batch_norm_3'+str(residual_layer)))
-    #print(bn_3)
-    tp_conv3d_4 = tf.layers.conv3d(bn_3, 60, (1, 2, 1), (1, 1, 1), activation = my_leaky_relu, dilation_rate = 8, padding = 'same', name = ('classifier_conv3d_4_'+str(residual_layer)))
-    bn_4 = tf.layers.batch_normalization(tp_conv3d_4, name=('classifier_batch_norm_4'+str(residual_layer)))
-    #print(bn_4)
-    tp_conv3d_5 = tf.layers.conv3d(bn_4, 60, (1, 2, 1), (1, 1, 1), activation = my_leaky_relu, dilation_rate = 4, padding = 'same', name = ('classifier_conv3d_5_'+str(residual_layer)))
-    bn_5 = tf.layers.batch_normalization(tp_conv3d_5, name=('classifier_batch_norm_5'+str(residual_layer)))
-    tp_conv3d_6 = tf.layers.conv3d(bn_4, 60, (1, 2, 1), (1, 1, 1), activation = my_leaky_relu, dilation_rate = 2, padding = 'same', name = ('classifier_conv3d_6_'+str(residual_layer)))
-    bn_6 = tf.layers.batch_normalization(tp_conv3d_5, name=('classifier_batch_norm_6'+str(residual_layer)))
-    tp_conv3d_7 = tf.layers.conv3d(bn_4, 60, (1, 2, 1), (1, 1, 1), activation = my_leaky_relu, dilation_rate = 1, padding = 'same', name = ('classifier_conv3d_7_'+str(residual_layer)))
-    bn_7 = tf.layers.batch_normalization(tp_conv3d_5, name=('classifier_batch_norm_7'+str(residual_layer)))
-    #print(bn_5)
-    #dropout_2 = tf.nn.dropout(bn_5, 0.3, name = ('classifier_dropout_2'+str(residual_layer)))
-
-    #Looks at adjacent bars
-    tp_conv3d_8 = tf.layers.conv3d(bn_7, 60, (2, 1, 1), (1, 1, 1), activation = my_leaky_relu, padding = 'same', name = ('classifier_conv3d_8_'+str(residual_layer)))
-    bn_8 = tf.layers.batch_normalization(tp_conv3d_8, name=('classifier_batch_norm_8'+str(residual_layer)))
-    #print(bn_6)
-    #dropout_3 = tf.nn.dropout(bn_8, 0.3, name = ('classifier_dropout_3'+str(residual_layer)))
-
-    residual_out = tp_conv3d_8
-    #residual_out = tf.add(residual_input, tf.reshape(bn_8, [-1,4,96,84,5]), name = ('classifier_add_'+str(residual_layer)))
-
-    return residual_out
-
-
-  for i in range(NUM_LAYERS):
-    residual_input = Residual_Unit(residual_input, i)
-
-  print(residual_input)
-
-  reduce_sum = tf.reduce_sum(residual_input, [1,2,3,4])
-  print(reduce_sum)
-  return tf.layers.dense(tf.reshape(reduce_sum, [-1, 1]), NUM_CLASSES, name='classifier_dense_out')
-"""
-
+  #classifier_out = Merged_Classifier(tf.concat([chroma_out, onset_out], -1), NUM_CLASSES)
+  discriminator_out = Merged_Discriminator(concated)
+  return discriminator_out, discriminator_out_1, discriminator_out_2, discriminator_out_3
 
 def Classifier(refiner_out, NUM_TRACKS, NUM_CLASSES):
   def my_leaky_relu(x):
@@ -481,7 +438,6 @@ def Classifier(refiner_out, NUM_TRACKS, NUM_CLASSES):
   return classifier_out, classifier_out_1, classifier_out_2, classifier_out_3
 
 
-
 def Refiner(generator_out, NUM_TRACKS, RESIDUAL_LAYERS, SLOPE_TENSOR):
 
   def Residual_Unit(residual_input, residual_layer, track_num):
@@ -547,6 +503,7 @@ class Data(object):
   def __init__(self, data_directory):
     #Only restrieves songs in folder that are from genres of interest
     parsed_directory_list = os.listdir(data_directory)
+    print(parsed_directory_list)
     genre_dictionary = {}
 
     for genre in GENRE_LIST:
@@ -600,7 +557,7 @@ class Data(object):
 
 #BULD FULL MODEL FOR TESTING SHAPES
 def main():
-    """
+
     tf.reset_default_graph()
 
     print("\n\n")
@@ -614,8 +571,8 @@ def main():
     generator_out = Generator(input_genre, latent_vector, LATENT_SIZE, NUM_TRACKS, NUM_CLASSES)
     refiner_out = Refiner(generator_out, NUM_TRACKS, RESIDUAL_LAYERS, SLOPE_TENSOR)
     discriminiator_out = Discriminator(real_data, NUM_TRACKS)
-    classifier_out = Classifierv2(real_data, NUM_LAYERS, NUM_CLASSES)
-    #classifier_out = Classifier(refiner_out, NUM_TRACKS, NUM_CLASSES)
+    #classifier_out = Classifierv2(real_data, NUM_LAYERS, NUM_CLASSES)
+    classifier_out = Classifier(refiner_out, NUM_TRACKS, NUM_CLASSES)
 
     #print("Real_data", real_data)
     print("\n\n")
@@ -623,15 +580,17 @@ def main():
     print("Refiner out: ", refiner_out)
     print("Discriminator out: ", discriminiator_out)
     print("Classifier out: ", classifier_out)
-    print("\n\n")"""
+    print("\n\n")
 
-    #TRAIN CLASSIFIER
-    tf.reset_default_graph()
+
+    #TRAIN GAN
+    #tf.reset_default_graph()
 
     #pass in data for session, assumes data labels will be passed in with data
     real_data = tf.placeholder(dtype = tf.bool, shape = [None, NUM_BARS, BEATS_PER_BAR, NUM_NOTES, NUM_TRACKS])
     real_data = tf.cast(real_data, dtype= tf.float32)
     real_data_labels = tf.placeholder(dtype = tf.int32, shape = None)
+
 
     #One hot encode data labels
     labels = tf.one_hot(real_data_labels, NUM_CLASSES)
@@ -712,7 +671,7 @@ def main():
                 saver.save(sess, join(models_directory, filename))
     #print(classifier_out)
     out = sess.run([tf.nn.softmax(classifier_out)], feed_dict={real_data: data_batch, real_data_labels: label_batch})
-    print(out)
+    print(out)"""
 
 
 
