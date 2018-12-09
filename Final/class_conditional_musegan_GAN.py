@@ -328,18 +328,18 @@ def Discriminator(refiner_out, NUM_TRACKS):
   #print(private_discriminator_out.get_shape())
 
   shared_discriminator_out = shared_discriminator(private_discriminator_out)
-  num_features_1= shared_discriminator_out.get_shape()[1]*shared_discriminator_out.get_shape()[2]*shared_discriminator_out.get_shape()[3]*shared_discriminator_out.get_shape()[4]
-  discriminator_out_1 = tf.layers.dense(tf.reshape(shared_discriminator_out, [-1, num_features_1]),NUM_CLASSES, name='discriminator_dense_out1')
+  #num_features_1= shared_discriminator_out.get_shape()[1]*shared_discriminator_out.get_shape()[2]*shared_discriminator_out.get_shape()[3]*shared_discriminator_out.get_shape()[4]
+  #discriminator_out_1 = tf.layers.dense(tf.reshape(shared_discriminator_out, [-1, num_features_1]),NUM_CLASSES, name='discriminator_dense_out1')
   #print(shared_discriminator_out.get_shape())
   chroma_out = Chroma(refiner_out)
   #print(chroma_out)
-  num_features_2= chroma_out.get_shape()[1]*chroma_out.get_shape()[2]*chroma_out.get_shape()[3]*chroma_out.get_shape()[4]
+  #num_features_2= chroma_out.get_shape()[1]*chroma_out.get_shape()[2]*chroma_out.get_shape()[3]*chroma_out.get_shape()[4]
   #print(num_features_2)
 #print(tf.reshape(chroma_out [-1, 1, 1, 1, num_features_2]))
-  discriminator_out_2 = tf.layers.dense(tf.reshape(chroma_out, [-1, num_features_2]),NUM_CLASSES, name='discriminator_dense_out2')
+  #discriminator_out_2 = tf.layers.dense(tf.reshape(chroma_out, [-1, num_features_2]),NUM_CLASSES, name='discriminator_dense_out2')
   onset_out = Onset(refiner_out)
-  num_features_3= onset_out.get_shape()[1]*onset_out.get_shape()[2]*onset_out.get_shape()[3]*onset_out.get_shape()[4]
-  discriminator_out_3 = tf.layers.dense(tf.reshape(onset_out, [-1, num_features_3]),NUM_CLASSES, name='discriminator_dense_out3')
+  #num_features_3= onset_out.get_shape()[1]*onset_out.get_shape()[2]*onset_out.get_shape()[3]*onset_out.get_shape()[4]
+  #discriminator_out_3 = tf.layers.dense(tf.reshape(onset_out, [-1, num_features_3]),NUM_CLASSES, name='discriminator_dense_out3')
   #print(chroma_out.get_shape())
   #print(onset_out.get_shape())
   #exit()
@@ -348,7 +348,7 @@ def Discriminator(refiner_out, NUM_TRACKS):
   #print(concated)
   #classifier_out = Merged_Classifier(tf.concat([chroma_out, onset_out], -1), NUM_CLASSES)
   discriminator_out = Merged_Discriminator(concated)
-  return discriminator_out, discriminator_out_1, discriminator_out_2, discriminator_out_3
+  return discriminator_out
 
 def Classifier(refiner_out, NUM_TRACKS, NUM_CLASSES):
   def my_leaky_relu(x):
@@ -503,7 +503,6 @@ class Data(object):
   def __init__(self, data_directory):
     #Only restrieves songs in folder that are from genres of interest
     parsed_directory_list = os.listdir(data_directory)
-    print(parsed_directory_list)
     genre_dictionary = {}
 
     for genre in GENRE_LIST:
@@ -562,17 +561,20 @@ def main():
 
     print("\n\n")
     print("Defining placeholders...")
-    input_genre = tf.placeholder(dtype = tf.bool, shape = 1)
+    input_genre = tf.placeholder(dtype = tf.int32, shape = 1)
     latent_vector = tf.placeholder(dtype = tf.float32, shape = [None,LATENT_SIZE])
     real_data = tf.placeholder(dtype = tf.bool, shape = [None, NUM_BARS, BEATS_PER_BAR, NUM_NOTES, NUM_TRACKS])
     real_data = tf.cast(real_data, dtype= tf.float32)
+    real_data_labels = tf.placeholder(dtype = tf.int32, shape = None)
+    labels = tf.one_hot(real_data_labels, NUM_CLASSES)
 
     print("Constructing Model...")
     generator_out = Generator(input_genre, latent_vector, LATENT_SIZE, NUM_TRACKS, NUM_CLASSES)
     refiner_out = Refiner(generator_out, NUM_TRACKS, RESIDUAL_LAYERS, SLOPE_TENSOR)
-    discriminiator_out = Discriminator(real_data, NUM_TRACKS)
+    discriminator_out_fake = Discriminator(generator_out, NUM_TRACKS)
+    discriminator_out_real = Discriminator(real_data, NUM_TRACKS)
     #classifier_out = Classifierv2(real_data, NUM_LAYERS, NUM_CLASSES)
-    classifier_out = Classifier(refiner_out, NUM_TRACKS, NUM_CLASSES)
+    classifier_out, classifier_out_1, classifier_out_2, classifier_out_3 = Classifier(refiner_out, NUM_TRACKS, NUM_CLASSES)
 
     #print("Real_data", real_data)
     print("\n\n")
@@ -581,26 +583,13 @@ def main():
     print("Discriminator out: ", discriminiator_out)
     print("Classifier out: ", classifier_out)
     print("\n\n")
-
-
     #TRAIN GAN
-    #tf.reset_default_graph()
-
-    #pass in data for session, assumes data labels will be passed in with data
-    real_data = tf.placeholder(dtype = tf.bool, shape = [None, NUM_BARS, BEATS_PER_BAR, NUM_NOTES, NUM_TRACKS])
-    real_data = tf.cast(real_data, dtype= tf.float32)
-    real_data_labels = tf.placeholder(dtype = tf.int32, shape = None)
 
 
-    #One hot encode data labels
-    labels = tf.one_hot(real_data_labels, NUM_CLASSES)
-
-    #Buld Classifier
-    #classifier_out = Classifierv2(real_data, NUM_LAYERS, NUM_CLASSES)
-    classifier_out, classifier_out_1, classifier_out_2, classifier_out_3 = Classifier(real_data, NUM_TRACKS, NUM_CLASSES)
 
     #classifier_loss_functions = Loss_Functions(gp_coefficient = 1, discriminator_coefficient = 0.5)
-    classifier_cce_loss = classifier_loss(classifier_out, labels, 0, 0) + classifier_loss(classifier_out_1, labels, 0, 0) +classifier_loss(classifier_out_2, labels, 0, 0) +classifier_loss(classifier_out_3, labels, 0, 0)
+    discriminator_loss, generator_loss = adverserial_loss(discriminator_out_fake, discriminator_out_real, real_data, generator_out,GRADIENT_PENALTY)
+    classifier_cce_loss = classifier_loss(classifier_out, labels, LABEL_SMOOTHING, CONFIDENCE_PENTALTY)
     #classifier_varlist = list(filter(lambda a : "classifier" in a.name, [v for v in tf.trainable_variables()]))
     optim = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE, beta1=0.9, beta2=0.999, epsilon=1e-08, use_locking=False, name='Classifier_Optimizer').minimize(classifier_cce_loss)
 
