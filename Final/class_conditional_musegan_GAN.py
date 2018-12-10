@@ -9,7 +9,7 @@ Original file is located at
 
 import numpy as np
 import os, sys
-from tqdm import trange
+from tqdm import trange, tqdm
 from os.path import dirname, abspath, basename, exists, splitext, join
 from datetime import datetime
 
@@ -246,7 +246,7 @@ def Generator(input_genre, latent_vector, LATENT_SIZE, NUM_TRACKS, NUM_CLASSES):
     return tp_bn_2
 
   def merged_private(private_out, track_num):
-    merged_conv3d = tf.layers.conv3d_transpose(private_out, 1, (1, 1, 1), (1, 1, 1), activation = 'sigmoid', name = ('generator_merged_conv3d'+str(track_num)))
+    merged_conv3d = tf.layers.conv3d_transpose(private_out, 1, (1, 1, 1), (1, 1, 1), name = ('generator_merged_conv3d'+str(track_num)))
     merged_bn = tf.layers.batch_normalization(merged_conv3d, name=('generator_merged_bn'+str(track_num)))
     return merged_bn
 
@@ -254,11 +254,13 @@ def Generator(input_genre, latent_vector, LATENT_SIZE, NUM_TRACKS, NUM_CLASSES):
   shared_out = shared_generator(class_input)
   #print(shared_out)
   private_out = []
+
   for i in range(NUM_TRACKS):
     private_out.append (merged_private(tf.concat([pitch_time_private(shared_out, i), time_pitch_private(shared_out, i)], -1), i))
 
 
   #print(private_out)
+  #print(NUM_TRACKS)
   generator_out = tf.concat(private_out,-1)
   return generator_out
 
@@ -347,7 +349,7 @@ def Discriminator(refiner_out, NUM_TRACKS):
   #concated = tf.concat([chroma_out, onset_out], -1)
   #print(concated)
   #classifier_out = Merged_Classifier(tf.concat([chroma_out, onset_out], -1), NUM_CLASSES)
-  discriminator_out = Merged_Discriminator(concated)
+  discriminator_out = tf.squeeze(Merged_Discriminator(concated))
   return discriminator_out
 
 def Classifier(refiner_out, NUM_TRACKS, NUM_CLASSES):
@@ -477,16 +479,12 @@ def Refiner(generator_out, NUM_TRACKS, RESIDUAL_LAYERS, SLOPE_TENSOR):
   refiner_out = tf.concat(BSN_out,-1)
   return refiner_out
 
-class Loss_Functions():
-  def __init__(self, gp_coefficient, discriminator_coefficient):
-    self.discriminator_coefficient = discriminator_coefficient
-    self.classifier_coefficient = 1-discriminator_coefficient_coefficient
-    self.gradient_penalty = gradient_penalty
+
 
 def classifier_loss(data, labels, label_smoothing, confidence_penalty): # if label smoothing nonzero then is used
   return tf.losses.softmax_cross_entropy(labels, data, label_smoothing= label_smoothing) + confidence_penalty*tf.reduce_sum(tf.nn.softmax(data)*tf.log(tf.nn.softmax(data)))
 
-
+"""
 def adverserial_loss(D_fake_data, D_real_data, real_input_data, G_out, gradient_penalty): #WGAN with gradient penalty
   discriminator_loss = (tf.reduce_mean(D_fake_data) - tf.reduce_mean(D_real_data))
   generator_loss = -tf.reduce_mean(D_fake_data)
@@ -498,6 +496,13 @@ def adverserial_loss(D_fake_data, D_real_data, real_input_data, G_out, gradient_
   gradient_penalty = tf.reduce_mean(tf.square(slopes - 1.0))
   discriminator_loss += (gradient_penalty* gradient_penalty)
   return discriminator_loss, generator_loss
+ """
+
+def VAC_GAN_loss(fake_out, real_out, classifier_out, classifier_labels):
+    generator_loss = NU*tf.losses.sigmoid_cross_entropy(logits=fake_out, multi_class_labels=tf.ones(fake_out.get_shape(), dtype = tf.float32))+ZETA*tf.losses.softmax_cross_entropy(classifier_labels, classifier_out)
+    discriminator_loss = tf.losses.sigmoid_cross_entropy(logits=real_out, multi_class_labels= tf.ones(real_out.get_shape(), dtype = tf.float32)) + tf.losses.sigmoid_cross_entropy(logits=fake_out, multi_class_labels=tf.zeros(fake_out.get_shape(), dtype = tf.float32))
+    return generator_loss, discriminator_loss
+
 
 class Data(object):
   def __init__(self, data_directory):
@@ -533,9 +538,15 @@ class Data(object):
       np.random.shuffle(songs_list)
       return songs_list
 
+  def get_noise(self):
+      return np.random.randn(GENERATOR_BATCH_SIZE,LATENT_SIZE)
+
+  def get_genre(self):
+      return np.random.randint(NUM_CLASSES, size=GENERATOR_BATCH_SIZE)
+
   def get_batch(self):
     start = self.index_in_epoch
-    self.index_in_epoch += BATCH_SIZE
+    self.index_in_epoch += REAL_DATA_BATCH_SIZE
 
     # When all the training data is ran, shuffles it
     if self.index_in_epoch > self.num_examples:
@@ -543,16 +554,16 @@ class Data(object):
 
         # Start next epoch
         start = 0
-        self.index_in_epoch = BATCH_SIZE
+        self.index_in_epoch = REAL_DATA_BATCH_SIZE
         assert BATCH_SIZE <= self.num_examples
     end = self.index_in_epoch
 
     #This unzipping is done to save on storage and memeory since the files are mostly 0's
     npz_data = [np.load(join(self.path,element))["data"] for element in self.songs[start:end]] #uncompress all npz files and load in "data" array
     batch_data = [element[0].astype(bool) for element in npz_data] #corresponds to the songs data which is stored in the first element of the data array
-    batch_label = [GENRE_LIST.index(element[1]) for element in npz_data]  #corresponds to the label fo the song stored inteh first element of the data array
+    #batch_label = [GENRE_LIST.index(element[1]) for element in npz_data]  #corresponds to the label fo the song stored inteh first element of the data array
 
-    return batch_data, batch_label
+    return batch_data
 
 #BULD FULL MODEL FOR TESTING SHAPES
 def main():
@@ -561,53 +572,100 @@ def main():
 
     print("\n\n")
     print("Defining placeholders...")
-    input_genre = tf.placeholder(dtype = tf.int32, shape = 1)
-    latent_vector = tf.placeholder(dtype = tf.float32, shape = [None,LATENT_SIZE])
-    real_data = tf.placeholder(dtype = tf.bool, shape = [None, NUM_BARS, BEATS_PER_BAR, NUM_NOTES, NUM_TRACKS])
-    real_data = tf.cast(real_data, dtype= tf.float32)
-    real_data_labels = tf.placeholder(dtype = tf.int32, shape = None)
-    labels = tf.one_hot(real_data_labels, NUM_CLASSES)
+    input_genre = tf.placeholder(dtype = tf.int32, shape = GENERATOR_BATCH_SIZE)
+    latent_vector = tf.placeholder(dtype = tf.float32, shape = [GENERATOR_BATCH_SIZE,LATENT_SIZE])
+    real_data = tf.placeholder(dtype = tf.float32, shape = [REAL_DATA_BATCH_SIZE, NUM_BARS, BEATS_PER_BAR, NUM_NOTES, NUM_TRACKS])
+    #real_data_labels = tf.placeholder(dtype = tf.int32, shape = None)
+    #labels = tf.one_hot(real_data_labels, NUM_CLASSES)
 
     print("Constructing Model...")
     generator_out = Generator(input_genre, latent_vector, LATENT_SIZE, NUM_TRACKS, NUM_CLASSES)
-    refiner_out = Refiner(generator_out, NUM_TRACKS, RESIDUAL_LAYERS, SLOPE_TENSOR)
-    discriminator_out_fake = Discriminator(generator_out, NUM_TRACKS)
-    discriminator_out_real = Discriminator(real_data, NUM_TRACKS)
-    #classifier_out = Classifierv2(real_data, NUM_LAYERS, NUM_CLASSES)
-    classifier_out, classifier_out_1, classifier_out_2, classifier_out_3 = Classifier(refiner_out, NUM_TRACKS, NUM_CLASSES)
+    #refiner_out = Refiner(generator_out, NUM_TRACKS, RESIDUAL_LAYERS, SLOPE_TENSOR)
+
+
+    with tf.variable_scope('Discriminator') as scope:
+        fake_out = Discriminator(generator_out, NUM_TRACKS)
+        scope.reuse_variables()
+        real_out = Discriminator(real_data, NUM_TRACKS)
+
+
+
+    classifier_labels = tf.one_hot(input_genre, NUM_CLASSES)
+
+    classifier_out, classifier_out_1, classifier_out_2, classifier_out_3 = Classifier(generator_out, NUM_TRACKS, NUM_CLASSES)
 
     #print("Real_data", real_data)
     print("\n\n")
     print("Generator out: ", generator_out)
-    print("Refiner out: ", refiner_out)
-    print("Discriminator out: ", discriminiator_out)
+    #print("Refiner out: ", refiner_out)
+    print("Fake out: ", fake_out)
+    print("Real out: ", real_out)
     print("Classifier out: ", classifier_out)
     print("\n\n")
     #TRAIN GAN
+    classifier_accuracy, acc_op = tf.metrics.accuracy(input_genre, tf.argmax(classifier_out, 1))
+    #DECLARE LOSS FUNCTIONS
+    generator_loss, discriminator_loss = VAC_GAN_loss(fake_out, real_out, classifier_out, classifier_labels)
+    #print(generator_loss)
+    #print(discriminator_loss)
+
+    #DECLARE TRAINABLE_VARIABLES
+    generator_varlist = list(filter(lambda a : "generator" in a.name, [v for v in tf.trainable_variables()]))
+    discriminator_varlist = list(filter(lambda a : "discriminator" in a.name, [v for v in tf.trainable_variables()]))
+
+    generator_optim = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE, beta1=BETA_1, beta2=BETA_2, epsilon=1e-08, use_locking=False, name='Generator_Optimizer').minimize(generator_loss, var_list = generator_varlist)
+    discriminator_optim = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE, beta1=BETA_1, beta2=BETA_2, epsilon=1e-08, use_locking=False, name='Discriminator_Optimizer').minimize(discriminator_loss, var_list = discriminator_varlist)
 
 
-
-    #classifier_loss_functions = Loss_Functions(gp_coefficient = 1, discriminator_coefficient = 0.5)
-    discriminator_loss, generator_loss = adverserial_loss(discriminator_out_fake, discriminator_out_real, real_data, generator_out,GRADIENT_PENALTY)
-    classifier_cce_loss = classifier_loss(classifier_out, labels, LABEL_SMOOTHING, CONFIDENCE_PENTALTY)
-    #classifier_varlist = list(filter(lambda a : "classifier" in a.name, [v for v in tf.trainable_variables()]))
-    optim = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE, beta1=0.9, beta2=0.999, epsilon=1e-08, use_locking=False, name='Classifier_Optimizer').minimize(classifier_cce_loss)
-
-    classifier_accuracy, acc_op = tf.metrics.accuracy(real_data_labels, tf.argmax(classifier_out, 1))
-
+    #INITIALIZE VARIABLES
     print("Initialising session...")
     init_g = tf.global_variables_initializer()
     init_l = tf.local_variables_initializer()
     sess = tf.Session()
     sess.run(init_g)
     sess.run(init_l)
+
     saver = tf.train.Saver()
 
-    #print(LEARNING_RATE)
+    def optimistic_restore(session, save_file, graph=tf.get_default_graph()):
+        reader = tf.train.NewCheckpointReader(save_file)
+        saved_shapes = reader.get_variable_to_shape_map()
+        var_names = sorted([(var.name, var.name.split(':')[0]) for var in tf.global_variables()
+            if var.name.split(':')[0] in saved_shapes])
+        restore_vars = []
+        for var_name, saved_var_name in var_names:
+            curr_var = graph.get_tensor_by_name(var_name)
+            var_shape = curr_var.get_shape().as_list()
+            if var_shape == saved_shapes[saved_var_name]:
+                restore_vars.append(curr_var)
+        opt_saver = tf.train.Saver(restore_vars)
+        opt_saver.restore(session, save_file)
+
+    #LOAD IN CLASSIFIER_WEIGHTS
+    checkpoint_path = r'/home/cofphe/Documents/jacob-luka/Models/saved_models_2018-12-06_01:02:25-63%accuracy'
+    optimistic_restore(sess, tf.train.latest_checkpoint(checkpoint_path))
 
     data_path = abspath(sys.argv[1])
     print("Loading in Data from: ", data_path)
     data = Data(data_path) #Path to directory containing music set
+
+
+    #TEST TO MAKE SURE CLASSIFIER WEIGHTS LOADING CORRECTLY
+    """
+    classifier_accuracy = []
+    for i in tqdm(range(1000)):
+        genre_batch = data.get_genre()
+        data_batch, label_batch = data.get_batch()
+        latent_batch = data.get_noise()
+
+        #print(genre_batch)
+        #print(latent_batch)
+        classifier_accuracy.append(sess.run([acc_op], feed_dict={input_genre: genre_batch, latent_vector: latent_batch, real_data: data_batch, real_data_labels: label_batch})[0])
+
+    print(np.mean(np.asarray(classifier_accuracy)))
+    exit()
+    """
+
 
     models_directory = join(sys.argv[2], ("saved_models_" + datetime.now().strftime('%Y-%m-%d_%H:%M:%S')))
     os.makedirs(models_directory, exist_ok=True)
@@ -616,51 +674,52 @@ def main():
     #with open(join(models_directory, "Model.csv"), 'w') as f:
        #f.write("LOSS,ACCURACY\n")
 
-
-    #print(np.sum(data_batch[0]))
+    """
+    #TEST TO MAKE SURE BATCHING IS DONE CORRECTLY
     data_label_test = []
-    for i in range(100):
+    for i in range(30):
         data_batch, label_batch = data.get_batch()
         data_label_test.append(sess.run([real_data_labels], feed_dict={real_data: data_batch, real_data_labels: label_batch})[0])
     data_label_test = np.concatenate(data_label_test)
     print(np.sum(np.sum(data_label_test == 0)))
     print(np.sum(np.sum(data_label_test == 1)))
     print(np.sum(np.sum(data_label_test == 2)))
-    #print(data)
-    #print("classifier_out", classifier_out)
-    #print("LogLabels", log_labels)
+    exit()
+    """
 
-    #print(sess.run([classifier_out], feed_dict={real_data: data_batch, real_data_labels: label_batch}))
+    genre_batch = data.get_genre()
+    data_batch = data.get_batch()
+    latent_batch = data.get_noise()
 
+    #print(genre_batch)
+    #print(latent_batch)
+    #print(sess.run([classifier_labels], feed_dict={input_genre: genre_batch, latent_vector: latent_batch, real_data: data_batch, real_data_labels: label_batch})[0][16:32])
 
     #exit()
-
-    BATCHES_PER_EPOCH = int(data.num_examples/BATCH_SIZE)
+    BATCHES_PER_EPOCH = int(data.num_examples/REAL_DATA_BATCH_SIZE)
 
     #progress = trange(1000, desc = 'Bar_desc', leave = True)
-    progress = trange(BATCHES_PER_EPOCH*CLASSIFIER_EPOCHS, desc = 'Bar_desc', leave = True)
+    progress = trange(BATCHES_PER_EPOCH*GAN_EPOCHS, desc = 'Bar_desc', leave = True)
 
     for t in progress:
-        data_batch, label_batch = data.get_batch()
-        loss_np, optim_np = sess.run([classifier_cce_loss, optim], feed_dict={real_data: data_batch, real_data_labels: label_batch})
-        accuracy = sess.run([classifier_accuracy, acc_op], feed_dict={real_data: data_batch, real_data_labels: label_batch})
+        genre_batch = data.get_genre()
+        data_batch = data.get_batch()
+        latent_batch = data.get_noise()
 
-        progress.set_description(' LOSS ===> ' + str(loss_np) + ' ACCURACY ===> ' + str(accuracy[1]))
+        loss_generator, optim_generator, loss_discriminator, optim_discriminator, blah, accuracy = sess.run([generator_loss, generator_optim, discriminator_loss, discriminator_optim, classifier_accuracy, acc_op],feed_dict={input_genre: genre_batch, latent_vector: latent_batch, real_data: data_batch})
+
+        progress.set_description('GEN LOSS ===> ' + str(loss_generator) + ' DIS LOSS ===> ' + str(loss_discriminator) + '  ACC ===> ' + str(accuracy))
         progress.refresh()
 
         with open(join(models_directory, "Model.csv"), 'a') as f:
-            f.write(str(loss_np) + "," + str(accuracy[1]) + "\n")
+            f.write(str(loss_generator) + "," + str(loss_discriminator) + ","  + str(accuracy) + "\n")
 
-        #print(data.num_examples)
-        if t%BATCHES_PER_EPOCH == 0 or t==BATCHES_PER_EPOCH*CLASSIFIER_EPOCHS:
+
+        if t%BATCHES_PER_EPOCH == 0 or t==BATCHES_PER_EPOCH*GAN_EPOCHS:
             print("Epoch Completed")
-            if accuracy[1]>accuracy_old:
-                accuracy_old = accuracy[1]
-                filename = "model-" + str((t*BATCH_SIZE)/data.num_examples)+"-"+str(accuracy_old)
-                saver.save(sess, join(models_directory, filename))
-    #print(classifier_out)
-    out = sess.run([tf.nn.softmax(classifier_out)], feed_dict={real_data: data_batch, real_data_labels: label_batch})
-    print(out)"""
+            filename = "model-" + str((t*BATCH_SIZE)/data.num_examples)+"-"+str(accuracy_old)
+            saver.save(sess, join(models_directory, filename))
+
 
 
 

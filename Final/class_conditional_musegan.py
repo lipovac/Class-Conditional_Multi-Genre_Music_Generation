@@ -687,7 +687,7 @@ def main():
 
     #exit()
 
-    BATCHES_PER_EPOCH = int(data.num_examples/BATCH_SIZE)
+    BATCHES_PER_EPOCH = int(data.num_examples/)
 
     #progress = trange(1000, desc = 'Bar_desc', leave = True)
     progress = trange(BATCHES_PER_EPOCH*CLASSIFIER_EPOCHS, desc = 'Bar_desc', leave = True)
