@@ -705,16 +705,12 @@ def main():
         genre_batch = data.get_genre()
         data_batch = data.get_batch()
         latent_batch = data.get_noise()
-
         loss_generator, optim_generator, loss_discriminator, optim_discriminator, blah, accuracy = sess.run([generator_loss, generator_optim, discriminator_loss, discriminator_optim, classifier_accuracy, acc_op],feed_dict={input_genre: genre_batch, latent_vector: latent_batch, real_data: data_batch})
-
         progress.set_description('GEN LOSS ===> ' + str(loss_generator) + ' DIS LOSS ===> ' + str(loss_discriminator) + '  ACC ===> ' + str(accuracy))
         progress.refresh()
 
         with open(join(models_directory, "Model.csv"), 'a') as f:
             f.write(str(loss_generator) + "," + str(loss_discriminator) + ","  + str(accuracy) + "\n")
-
-
         if t%BATCHES_PER_EPOCH == 0 or t==BATCHES_PER_EPOCH*GAN_EPOCHS:
             print("Epoch Completed")
             filename = "model-" + str((t*BATCH_SIZE)/data.num_examples)+"-"+str(accuracy_old)
