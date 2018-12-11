@@ -614,7 +614,7 @@ def main():
 
     #TEST TO MAKE SURE CLASSIFIER WEIGHTS LOADING CORRECTLY
     classifier_accuracy = []
-    for i in tqdm(range(100)):
+    for i in tqdm(range(5000)):
         genre_batch = data.get_genre()
         data_batch, label_batch = data.get_batch()
         latent_batch = data.get_noise()
