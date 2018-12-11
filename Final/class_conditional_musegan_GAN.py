@@ -525,6 +525,29 @@ class Data(object):
 
     return batch_data, batch_label
 
+def convert_to_npz(generated_phrase):
+    padded_phrase = np.pad(generated_phrase, [(0,0),(0,0),(LOWEST_NOTE,TOTAL_PIANOROLL_NOTES-LOWEST_NOTE-NUM_NOTES),(0,0)], 'constant', constant_values=False) #repad notes from 84 to 128
+    padded_reshaped_phrase = np.reshape(padded_phrase, (NUM_TRACKS, NUM_BARS, BEATS_PER_BAR, TOTAL_PIANOROLL_NOTES)) #reshape to be in pypianoroll format
+
+    program_list = [0, 0, 24, 32, 48] #list of instruments
+    is_Drum_list = [True, False, False, False, False]
+    name_list = ["Drums", "Piano", "Guitar", "Bass", "Strings"]
+
+    pianoroll_list = []
+
+    for track in range(0,NUM_TRACKS):
+        track_data = padded_reshaped_phrase[track]
+
+        concated_bars = np.empty((0,TOTAL_PIANOROLL_NOTES), dtype=bool)
+        for bar in range(0,NUM_BARS):
+            concated_bars = np.concatenate((concated_bars, track_data[bar]), axis=0)
+
+        pianoroll_list.append(pypianoroll.Track(pianoroll=concated_bars, program=program_list[track], is_drum=is_Drum_list[track], name=name_list[track]))
+
+    multitrack = pypianoroll.Multitrack(tracks=pianoroll_list, tempo=120.0, beat_resolution=24, downbeat=np.asarray([True]+[False]*(NUM_BARS*BEATS_PER_BAR-1),))
+
+    pypianoroll.save(join(songs_directory, "ouput.npz"), multitrack)
+
 #BULD FULL MODEL FOR TESTING SHAPES
 def main():
 
@@ -614,7 +637,7 @@ def main():
 
     #TEST TO MAKE SURE CLASSIFIER WEIGHTS LOADING CORRECTLY
     classifier_accuracy = []
-    for i in tqdm(range(100)):
+    for i in tqdm(range(1000)):
         genre_batch = data.get_genre()
         data_batch, label_batch = data.get_batch()
         latent_batch = data.get_noise()
@@ -631,6 +654,9 @@ def main():
     models_directory = join(sys.argv[2], ("saved_models_" + datetime.now().strftime('%Y-%m-%d_%H:%M:%S')))
     os.makedirs(models_directory, exist_ok=True)
     accuracy_old = 0
+
+    songs_directory = join(sys.argv[3], ("generated_song_" + datetime.now().strftime('%Y-%m-%d_%H:%M:%S')))
+    os.makedirs(songs_directory, exist_ok=True)
 
     #with open(join(models_directory, "Model.csv"), 'w') as f:
        #f.write("LOSS,ACCURACY\n")
@@ -677,7 +703,9 @@ def main():
             filename = "model-" + str((t*BATCH_SIZE)/data.num_examples)+"-"+str(accuracy)
             saver.save(sess, join(models_directory, filename))
 
-
+    #Generating Sample and converting to NPZ file for future playback
+    generated_phrase = ##NEED TO CALL GENERATOR HERE
+    convert_to_npz(generated_phrase)
 
 
 
