@@ -521,6 +521,30 @@ class Data(object):
     return batch_data
     #return batch_data, batch_label
 
+
+def convert_to_npz(generated_phrase, song_name):
+    padded_phrase = np.pad(generated_phrase, [(0,0),(0,0),(LOWEST_NOTE,TOTAL_PIANOROLL_NOTES-LOWEST_NOTE-NUM_NOTES),(0,0)], 'constant', constant_values=False) #repad notes from 84 to 128
+    padded_reshaped_phrase = np.reshape(padded_phrase, (NUM_TRACKS, NUM_BARS, BEATS_PER_BAR, TOTAL_PIANOROLL_NOTES)) #reshape to be in pypianoroll format
+
+    program_list = [0, 0, 24, 32, 48] #list of instruments
+    is_Drum_list = [True, False, False, False, False]
+    name_list = ["Drums", "Piano", "Guitar", "Bass", "Strings"]
+
+    pianoroll_list = []
+
+    for track in range(0,NUM_TRACKS):
+        track_data = padded_reshaped_phrase[track]
+
+        concated_bars = np.empty((0,TOTAL_PIANOROLL_NOTES), dtype=bool)
+        for bar in range(0,NUM_BARS):
+            concated_bars = np.concatenate((concated_bars, track_data[bar]), axis=0)
+
+        pianoroll_list.append(pypianoroll.Track(pianoroll=concated_bars, program=program_list[track], is_drum=is_Drum_list[track], name=name_list[track]))
+
+    multitrack = pypianoroll.Multitrack(tracks=pianoroll_list, tempo=120.0, beat_resolution=24, downbeat=np.asarray([True]+[False]*(NUM_BARS*BEATS_PER_BAR-1),))
+
+    pypianoroll.save(join(songs_directory, (song_name + ".npz")), multitrack)
+
 #BULD FULL MODEL FOR TESTING SHAPES
 def main():
 
@@ -629,6 +653,9 @@ def main():
     os.makedirs(models_directory, exist_ok=True)
     accuracy_old = 0
 
+    songs_directory = join(sys.argv[3], ("generated_song_" + datetime.now().strftime('%Y-%m-%d_%H:%M:%S')))
+    os.makedirs(songs_directory, exist_ok=True)
+
     #with open(join(models_directory, "Model.csv"), 'w') as f:
        #f.write("LOSS,ACCURACY\n")
 
@@ -681,7 +708,9 @@ def main():
     print("discriminator_accuracy", acc_disc)
 
 
-
+    #Generating Sample and converting to NPZ file for future playback
+    generated_phrase = ##NEED TO CALL GENERATOR HERE
+    convert_to_npz(generated_phrase, song_name)
 
 
 
