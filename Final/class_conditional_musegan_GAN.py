@@ -12,6 +12,7 @@ import os, sys
 from tqdm import trange, tqdm
 from os.path import dirname, abspath, basename, exists, splitext, join
 from datetime import datetime
+import pypianoroll
 
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
@@ -204,6 +205,8 @@ def binary_wrapper(pre_activations_tensor, estimator,
 #ARCHITECTURE FUNCTIONS
 
 def Generator(input_genre, latent_vector, LATENT_SIZE, NUM_TRACKS, NUM_CLASSES):
+  def my_leaky_relu(x):
+      return tf.nn.leaky_relu(x, alpha=.5)
 
   #Class Embedding Layer
   embedding_layer =  tf.keras.layers.Embedding(NUM_CLASSES, LATENT_SIZE, embeddings_initializer='glorot_normal', name = 'generator_embedding')
@@ -213,34 +216,34 @@ def Generator(input_genre, latent_vector, LATENT_SIZE, NUM_TRACKS, NUM_CLASSES):
 
   #Shared Generator
   def shared_generator(class_input):
-    dense_1 = tf.layers.dense(class_input, (3*512), activation = 'relu', name='generator_dense_1')
+    dense_1 = tf.layers.dense(class_input, (3*512), activation = my_leaky_relu, name='generator_dense_1')
     bn_1 = tf.layers.batch_normalization(dense_1, name='generator_batch_norm_1')
     reshape_1 = tf.reshape(bn_1, [-1,3,1,1,512], name = 'generator_reshape_1')
-    trans_conv3d_1 = tf.layers.conv3d_transpose(reshape_1, 256, (2, 1, 1), (1, 1, 1), activation = 'relu', name='generator_transconv3d_1')
+    trans_conv3d_1 = tf.layers.conv3d_transpose(reshape_1, 256, (2, 1, 1), (1, 1, 1), activation = my_leaky_relu, name='generator_transconv3d_1')
     bn_2 = tf.layers.batch_normalization(trans_conv3d_1, name='generator_batch_norm_2')
-    trans_conv3d_2 =  tf.layers.conv3d_transpose(bn_2, 128, (1, 4, 1), (1, 4, 1), activation = 'relu', name='generator_transconv3d_2')
+    trans_conv3d_2 =  tf.layers.conv3d_transpose(bn_2, 128, (1, 4, 1), (1, 4, 1), activation = my_leaky_relu, name='generator_transconv3d_2')
     bn_3 = tf.layers.batch_normalization(trans_conv3d_2, name='generator_batch_norm_3')
-    trans_conv3d_3 =  tf.layers.conv3d_transpose(bn_3, 128, (1, 1, 3), (1, 1, 3), activation = 'relu', name='generator_transconv3d_3')
+    trans_conv3d_3 =  tf.layers.conv3d_transpose(bn_3, 128, (1, 1, 3), (1, 1, 3), activation = my_leaky_relu, name='generator_transconv3d_3')
     bn_4 = tf.layers.batch_normalization(trans_conv3d_3, name='generator_batch_norm_4')
-    trans_conv3d_4 =  tf.layers.conv3d_transpose(bn_4, 64, (1, 4, 1), (1, 4, 1), activation = 'relu', name='generator_transconv3d_4')
+    trans_conv3d_4 =  tf.layers.conv3d_transpose(bn_4, 64, (1, 4, 1), (1, 4, 1), activation = my_leaky_relu, name='generator_transconv3d_4')
     bn_5 = tf.layers.batch_normalization(trans_conv3d_4, name='generator_batch_norm_5')
-    trans_conv3d_5 =  tf.layers.conv3d_transpose(bn_5, 64, (1, 1, 3), (1, 1, 2), activation = 'relu', name='generator_transconv3d_5')
+    trans_conv3d_5 =  tf.layers.conv3d_transpose(bn_5, 64, (1, 1, 3), (1, 1, 2), activation = my_leaky_relu, name='generator_transconv3d_5')
     shared_out = tf.layers.batch_normalization(trans_conv3d_5, name='generator_batch_norm_6')
     #print(shared_out)
     return shared_out
 
   #Private Generator
   def pitch_time_private(shared_out, track_num):
-    pt_conv3d_1 = tf.layers.conv3d_transpose(shared_out, 64, (1, 1, 12), (1, 1, 12), activation = 'relu', name = ('generator_pt_conv3d_1'+str(track_num)))
+    pt_conv3d_1 = tf.layers.conv3d_transpose(shared_out, 64, (1, 1, 12), (1, 1, 12), activation = my_leaky_relu, name = ('generator_pt_conv3d_1'+str(track_num)))
     pt_bn_1 = tf.layers.batch_normalization(pt_conv3d_1, name=('generator_pt_bn_1'+str(track_num)))
-    pt_conv3d_2 = tf.layers.conv3d_transpose(pt_bn_1, 32, (1, 6, 1), (1, 6, 1), activation = 'relu', name = ('generator_pt_conv3d_2'+str(track_num)))
+    pt_conv3d_2 = tf.layers.conv3d_transpose(pt_bn_1, 32, (1, 6, 1), (1, 6, 1), activation = my_leaky_relu, name = ('generator_pt_conv3d_2'+str(track_num)))
     pt_bn_2 = tf.layers.batch_normalization(pt_conv3d_2, name=('generator_pt_bn_2'+str(track_num)))
     return pt_bn_2
 
   def time_pitch_private(shared_out, track_num):
-    tp_conv3d_1 = tf.layers.conv3d_transpose(shared_out, 64, (1, 6, 1), (1, 6, 1), activation = 'relu', name = ('generator_tp_conv3d_1'+str(track_num)))
+    tp_conv3d_1 = tf.layers.conv3d_transpose(shared_out, 64, (1, 6, 1), (1, 6, 1), activation = my_leaky_relu, name = ('generator_tp_conv3d_1'+str(track_num)))
     tp_bn_1 = tf.layers.batch_normalization(tp_conv3d_1, name=('generator_tp_bn_1'+str(track_num)))
-    tp_conv3d_2 = tf.layers.conv3d_transpose(tp_bn_1, 32, (1, 1, 12), (1, 1, 12), activation = 'relu', name = ('generator_tp_conv3d_2'+str(track_num)))
+    tp_conv3d_2 = tf.layers.conv3d_transpose(tp_bn_1, 32, (1, 1, 12), (1, 1, 12), activation = my_leaky_relu, name = ('generator_tp_conv3d_2'+str(track_num)))
     tp_bn_2 = tf.layers.batch_normalization(tp_conv3d_2, name= ('generator_tp_bn_2'+str(track_num)))
     return tp_bn_2
 
@@ -257,7 +260,7 @@ def Generator(input_genre, latent_vector, LATENT_SIZE, NUM_TRACKS, NUM_CLASSES):
   for i in range(NUM_TRACKS):
     private_out.append (merged_private(tf.concat([pitch_time_private(shared_out, i), time_pitch_private(shared_out, i)], -1), i))
 
-  generator_out = tf.concat(private_out,-1)
+  generator_out = tf.sigmoid(tf.concat(private_out,-1))
   return generator_out
 
 
@@ -453,12 +456,12 @@ def classifier_loss(data, labels, label_smoothing, confidence_penalty): # if lab
   return tf.losses.softmax_cross_entropy(labels, data, label_smoothing= label_smoothing) + confidence_penalty*tf.reduce_sum(tf.nn.softmax(data)*tf.log(tf.nn.softmax(data)))
 
 
-def VAC_GAN_loss(fake_out, fake_out_1, fake_out_2, fake_out_3, real_out, real_out_1, real_out_2, real_out_3, classifier_out, classifier_labels):
-    generator_loss = NU*tf.losses.sigmoid_cross_entropy(logits=fake_out, multi_class_labels=tf.ones(fake_out.get_shape(), dtype = tf.float32))+ZETA*tf.losses.softmax_cross_entropy(classifier_labels, classifier_out)
-    discriminator_loss = tf.losses.sigmoid_cross_entropy(logits=real_out, multi_class_labels= tf.ones(real_out.get_shape(), dtype = tf.float32)) + tf.losses.sigmoid_cross_entropy(logits=fake_out, multi_class_labels=tf.zeros(fake_out.get_shape(), dtype = tf.float32)) + \
-                        tf.losses.sigmoid_cross_entropy(logits=real_out_1, multi_class_labels= tf.ones(real_out.get_shape(), dtype = tf.float32)) + tf.losses.sigmoid_cross_entropy(logits=fake_out_1, multi_class_labels=tf.zeros(fake_out.get_shape(), dtype = tf.float32)) + \
-                        tf.losses.sigmoid_cross_entropy(logits=real_out_2, multi_class_labels= tf.ones(real_out.get_shape(), dtype = tf.float32)) + tf.losses.sigmoid_cross_entropy(logits=fake_out_2, multi_class_labels=tf.zeros(fake_out.get_shape(), dtype = tf.float32)) + \
-                        tf.losses.sigmoid_cross_entropy(logits=real_out_3, multi_class_labels= tf.ones(real_out.get_shape(), dtype = tf.float32)) + tf.losses.sigmoid_cross_entropy(logits=fake_out_3, multi_class_labels=tf.zeros(fake_out.get_shape(), dtype = tf.float32))
+def VAC_GAN_loss(fake_out, fake_out_1, fake_out_2, fake_out_3, real_out, real_out_1, real_out_2, real_out_3, classifier_out, classifier_labels, discriminator_labels_real, discriminator_labels_fake, variance):
+    generator_loss = NU*tf.losses.sigmoid_cross_entropy(logits=fake_out, multi_class_labels=tf.zeros(fake_out.get_shape(), dtype = tf.float32))+ZETA*tf.losses.softmax_cross_entropy(classifier_labels, classifier_out)+LOW_VARIANCE_PENALTY/variance
+    discriminator_loss = tf.losses.sigmoid_cross_entropy(logits=real_out, multi_class_labels= discriminator_labels_real) + tf.losses.sigmoid_cross_entropy(logits=fake_out, multi_class_labels=discriminator_labels_fake) + \
+                        tf.losses.sigmoid_cross_entropy(logits=real_out_1, multi_class_labels= discriminator_labels_real) + tf.losses.sigmoid_cross_entropy(logits=fake_out_1, multi_class_labels=discriminator_labels_fake) + \
+                        tf.losses.sigmoid_cross_entropy(logits=real_out_2, multi_class_labels= discriminator_labels_real) + tf.losses.sigmoid_cross_entropy(logits=fake_out_2, multi_class_labels=discriminator_labels_fake) + \
+                        tf.losses.sigmoid_cross_entropy(logits=real_out_3, multi_class_labels= discriminator_labels_real) + tf.losses.sigmoid_cross_entropy(logits=fake_out_3, multi_class_labels=discriminator_labels_fake)
     return generator_loss, discriminator_loss
 
 
@@ -499,6 +502,18 @@ class Data(object):
   def get_genre(self):
       return np.random.randint(NUM_CLASSES, size=GENERATOR_BATCH_SIZE)
 
+  def get_labels(self):
+     discriminator_labels_real = np.random.uniform(0., 0.1, REAL_DATA_BATCH_SIZE)
+     discriminator_labels_fake = np.random.uniform(0.9, 1, GENERATOR_BATCH_SIZE)
+
+     label_smoothing_real = np.random.uniform(0., 1, REAL_DATA_BATCH_SIZE)
+     label_smoothing_fake = np.random.uniform(0., 1, GENERATOR_BATCH_SIZE)
+
+     discriminator_labels_real[label_smoothing_real<LABEL_SMOOTHING] = 1-discriminator_labels_real[label_smoothing_real<LABEL_SMOOTHING]
+     discriminator_labels_fake[label_smoothing_fake<LABEL_SMOOTHING] = 1-discriminator_labels_fake[label_smoothing_fake<LABEL_SMOOTHING]
+
+     return discriminator_labels_real, discriminator_labels_fake
+
   def get_batch(self):
     start = self.index_in_epoch
     self.index_in_epoch += REAL_DATA_BATCH_SIZE
@@ -522,7 +537,7 @@ class Data(object):
     #return batch_data, batch_label
 
 
-def convert_to_npz(generated_phrase, song_name):
+def convert_to_npz(generated_phrase, songs_directory, song_name):
     padded_phrase = np.pad(generated_phrase, [(0,0),(0,0),(LOWEST_NOTE,TOTAL_PIANOROLL_NOTES-LOWEST_NOTE-NUM_NOTES),(0,0)], 'constant', constant_values=False) #repad notes from 84 to 128
     padded_reshaped_phrase = np.reshape(padded_phrase, (NUM_TRACKS, NUM_BARS, BEATS_PER_BAR, TOTAL_PIANOROLL_NOTES)) #reshape to be in pypianoroll format
 
@@ -552,10 +567,13 @@ def main():
 
     print("\n\n")
     print("Defining placeholders...")
+
     input_genre = tf.placeholder(dtype = tf.int32, shape = GENERATOR_BATCH_SIZE)
     latent_vector = tf.placeholder(dtype = tf.float32, shape = [GENERATOR_BATCH_SIZE,LATENT_SIZE])
     real_data = tf.placeholder(dtype = tf.bool, shape = [REAL_DATA_BATCH_SIZE, NUM_BARS, BEATS_PER_BAR, NUM_NOTES, NUM_TRACKS])
     real_data = tf.cast(real_data, tf.float32)
+    discriminator_labels_real = tf.placeholder(dtype = tf.float32, shape = REAL_DATA_BATCH_SIZE)
+    discriminator_labels_fake = tf.placeholder(dtype = tf.float32, shape = REAL_DATA_BATCH_SIZE)
     #real_data_labels = tf.placeholder(dtype = tf.int32, shape = None)
     #labels = tf.one_hot(real_data_labels, NUM_CLASSES)
 
@@ -579,16 +597,18 @@ def main():
     print("Classifier out: ", classifier_out)
     print("\n\n")
 
+    mean, variance = tf.nn.moments(generator_out,[0,1,2,3,4],shift=None,name=None,keep_dims=False)
+
     #LOAD MODEL AND GENERATE MUSIC
     classifier_labels = tf.one_hot(input_genre, NUM_CLASSES)
 
     #TRAIN GAN
     #classifier_accuracy, acc_op = tf.metrics.accuracy(input_genre, tf.argmax(classifier_out, 1))
     classifier_accuracy, acc_op = tf.metrics.accuracy(input_genre, tf.argmax(classifier_out, 1))
-    discriminator_accuracy, acc_disc = tf.metrics.accuracy(tf.concat([tf.zeros(fake_out.get_shape(), dtype = tf.int32),tf.ones(real_out.get_shape(), dtype = tf.int32)], axis = -1), tf.round(tf.sigmoid(tf.concat([fake_out, real_out], axis = -1))))
+    discriminator_accuracy, acc_disc = tf.metrics.accuracy(tf.concat([tf.ones(fake_out.get_shape(), dtype = tf.int32),tf.zeros(real_out.get_shape(), dtype = tf.int32)], axis = -1), tf.round(tf.sigmoid(tf.concat([fake_out, real_out], axis = -1))))
 
     #DECLARE LOSS FUNCTIONS
-    generator_loss, discriminator_loss = VAC_GAN_loss(fake_out, fake_out_1, fake_out_2, fake_out_3, real_out, real_out_1, real_out_2, real_out_3, classifier_out, classifier_labels)
+    generator_loss, discriminator_loss = VAC_GAN_loss(fake_out, fake_out_1, fake_out_2, fake_out_3, real_out, real_out_1, real_out_2, real_out_3, classifier_out, classifier_labels, discriminator_labels_real, discriminator_labels_fake, variance)
     #print(generator_loss)
     #print(discriminator_loss)
 
@@ -684,33 +704,55 @@ def main():
     #exit()
     BATCHES_PER_EPOCH = int(data.num_examples/REAL_DATA_BATCH_SIZE)
 
-    progress = trange(1000, desc = 'Bar_desc', leave = True)
-    #progress = trange(BATCHES_PER_EPOCH*GAN_EPOCHS, desc = 'Bar_desc', leave = True)
+    #progress = trange(1000, desc = 'Bar_desc', leave = True)
+    progress = trange(BATCHES_PER_EPOCH*GAN_EPOCHS, desc = 'Bar_desc', leave = True)
 
     for t in progress:
         genre_batch = data.get_genre()
         data_batch = data.get_batch()
         latent_batch = data.get_noise()
-        loss_generator, optim_generator, loss_discriminator, optim_discriminator, class_acc, disc_acc = sess.run([generator_loss, generator_optim, discriminator_loss, discriminator_optim, acc_op, acc_disc],feed_dict={input_genre: genre_batch, latent_vector: latent_batch, real_data: data_batch})
-        progress.set_description('GEN LOSS ===> ' + str(loss_generator) + ' DIS LOSS ===> ' + str(loss_discriminator) + '  CLASS ACC ===> ' + str(class_acc) + '  DISC ACC ===> ' + str(disc_acc))
+        discriminator_labels_real_batch, discriminator_labels_fake_batch = data.get_labels()
+        #print(sess.run([variance],feed_dict={input_genre: genre_batch, latent_vector: latent_batch, real_data: data_batch, discriminator_labels_real: discriminator_labels_real_batch, discriminator_labels_fake: discriminator_labels_fake_batch}))
+
+        loss_generator, optim_generator, loss_discriminator, optim_discriminator, class_acc, disc_acc, variance_batch = sess.run([generator_loss, generator_optim, discriminator_loss, discriminator_optim, acc_op, acc_disc, variance],feed_dict={input_genre: genre_batch, latent_vector: latent_batch, real_data: data_batch, discriminator_labels_real: discriminator_labels_real_batch, discriminator_labels_fake: discriminator_labels_fake_batch})
+        progress.set_description('GEN LOSS ===> ' + str(loss_generator) + ' DIS LOSS ===> ' + str(loss_discriminator) + '  CLASS ACC ===> ' + str(class_acc) + '  DISC ACC ===> ' + str(disc_acc) + '  VAR ===> ' + str(variance_batch))
         progress.refresh()
 
         with open(join(models_directory, "Model.csv"), 'a') as f:
-            f.write(str(loss_generator) + "," + str(loss_discriminator) + ","  + str(class_acc) +  ","  + str(disc_acc) + "\n")
+            f.write(str(loss_generator) + "," + str(loss_discriminator) + ","  + str(class_acc) +  ","  + str(disc_acc) +  ","  + str(variance_batch) + "\n")
         if t%BATCHES_PER_EPOCH == 0 or t==BATCHES_PER_EPOCH*GAN_EPOCHS:
             print("Epoch Completed")
+            print("Making Music")
             filename = "model-" + str((t*BATCH_SIZE)/data.num_examples)+"-"+str(class_acc)
             saver.save(sess, join(models_directory, filename))
+            generated_music, generated_genre = sess.run([tf.cast(tf.round(generator_out), tf.bool), input_genre],feed_dict={input_genre: genre_batch, latent_vector: latent_batch, real_data: data_batch, discriminator_labels_real: discriminator_labels_real_batch, discriminator_labels_fake: discriminator_labels_fake_batch})
+            print("NUM NOTES", np.sum(generated_music))
+            for jj in range(GENERATOR_BATCH_SIZE):
+                if generated_genre[jj] == 0:
+                    generate_genre_name = 'alternative'
+                elif generated_genre[jj] == 1:
+                    generate_genre_name = 'rock'
+                elif generated_genre[jj] == 2:
+                    generate_genre_name = 'classic'
+                generated_phrase = generated_music[jj,:,:,:,:]
+                convert_to_npz(generated_phrase, songs_directory, (str(jj)+ '_'+generate_genre_name +'_EPOCH_' + str(int(t/BATCHES_PER_EPOCH))))
 
-    fake_out_batch, real_out_batch, acc_disc = sess.run([fake_out, real_out, acc_disc],feed_dict={input_genre: genre_batch, latent_vector: latent_batch, real_data: data_batch})
-    print("fake_out", fake_out_batch)
-    print("real_out", real_out_batch)
-    print("discriminator_accuracy", acc_disc)
+    generator_out_batch, generated_music, generated_genre = sess.run([generator_out, tf.cast(tf.round(generator_out), tf.bool), input_genre],feed_dict={input_genre: genre_batch, latent_vector: latent_batch, real_data: data_batch, discriminator_labels_real: discriminator_labels_real_batch, discriminator_labels_fake: discriminator_labels_fake_batch})
+    print(generator_out_batch[0,1,:,:,1])
+    print('\n\n')
+    print(generated_music[0,1,:,:,1])
+    for jj in range(GENERATOR_BATCH_SIZE):
+        if generated_genre[jj] == 0:
+            generate_genre_name = 'alternative'
+        elif generated_genre[jj] == 1:
+            generate_genre_name = 'rock'
+        elif generated_genre[jj] == 2:
+            generate_genre_name = 'classic'
+        generated_phrase = generated_music[jj,:,:,:,:]
+        convert_to_npz(generated_phrase, songs_directory, (str(jj)+ '_'+generate_genre_name +'_EPOCH_' + str(int(t/BATCHES_PER_EPOCH))))
 
 
-    #Generating Sample and converting to NPZ file for future playback
-    generated_phrase = ##NEED TO CALL GENERATOR HERE
-    convert_to_npz(generated_phrase, song_name)
+
 
 
 
