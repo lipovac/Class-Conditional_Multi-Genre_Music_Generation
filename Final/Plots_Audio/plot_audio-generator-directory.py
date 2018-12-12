@@ -5,6 +5,7 @@ import os
 import sys
 from os.path import join, abspath
 from midi2audio import FluidSynth
+import matplotlib.pyplot as plt
 
 ##REQUIRES FluidR3_GM.sf2 in same directory!! https://osdn.net/frs/g_redir.php?m=kent&f=androidframe%2Fsoundfonts%2FFluidR3_GM.sf2
 
@@ -40,7 +41,7 @@ def main():
                 output_filename = join(savepath, output_filename)
 
             fig, axs = plot_multitrack(loaded, filename=output_filename+".pdf", preset="frame")
-            fig.close()
+            plt.close(fig)
 
             #Save to WAV
             pypianoroll.write(loaded, (output_filename+".mid"))
