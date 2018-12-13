@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+
+
+<!-- Page 1 -->
+<svg x="0" y="0" width="865" height="434" viewBox="0 0 865 434" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+style="display: block;margin-left: auto;margin-right: auto;">
+<defs>
+<clipPath id="c0_1"><path d="M0,434.3V0H865.1V434.3H0Z" /></clipPath>
+<clipPath id="c1_1"><path d="M0,434.3V0H865.1V434.3Z" /></clipPath>
+<clipPath id="c2_1"><path d="M865.1,434.3H0V0H865.1V434.3Z" /></clipPath>
+
+<style type="text/css"><![CDATA[
+text { white-space: pre; }
+path, image { pointer-events: none; }
+
+.s1_1{
+font-size: 19.52px;
+font-family: Calibri_7;
+fill: #000000;
+}
+.s2_1{
+font-size: 18.41px;
+font-family: Calibri_7;
+fill: #000000;
+}
+.s3_1{
+font-size: 18.37px;
+font-family: Calibri_7;
+fill: #000000;
+}
+.s4_1{
+font-size: 18.41px;
+font-family: Calibri_d;
+fill: #000000;
+}
+.s5_1{
+font-size: 18.37px;
+font-family: Calibri_d;
+fill: #000000;
+}
+
+.g0_1{
+fill: #FFFFFF;
+}
+.g1_1{
+fill: none;
+stroke: #000000;
+stroke-width: 1.1469792;
+stroke-linecap: round;
+stroke-linejoin: round;
+}
+.g2_1{
+fill: #E3E3E3;
+}
+.g3_1{
+fill: none;
+stroke: #FF0000;
+stroke-width: 2.2916667;
+stroke-linecap: round;
+stroke-linejoin: round;
+}
+.g4_1{
+fill: #FF0000;
+}
+.g5_1{
+fill: none;
+stroke: #0070C0;
+stroke-width: 2.2916667;
+stroke-linecap: round;
+stroke-linejoin: round;
+}
+.g6_1{
+fill: #0070C0;
+}
+.g7_1{
+fill: none;
+stroke: #92D050;
+stroke-width: 2.2916667;
+stroke-linecap: round;
+stroke-linejoin: round;
+}
+.g8_1{
+fill: #92D050;
+}
+.g9_1{
+fill: none;
+stroke: #00B0F0;
+stroke-width: 2.2916667;
+stroke-linecap: round;
+stroke-linejoin: round;
+}
+.g10_1{
+fill: #00B0F0;
+}
+
+]]></style>
+
+</defs>
+<path d="M0,0
+L0,434
+L865,434
+L865,0 Z " 
+fill="#FFFFFF" stroke="none" />
+<path fill-rule="evenodd" d="M28.1,140.1H166.7l25.9,-26H54.1l-26,26Z" class="g0_1" />
+<path d="M28.1,140.1H166.7l25.9,-26H54.1l-26,26Z" class="g1_1" />
+<path fill-rule="evenodd" d="M166.7,244l25.9,-26V114.1l-25.9,26V244Z" class="g2_1" />
+<path d="M166.7,244l25.9,-26V114.1l-25.9,26V244Z" class="g1_1" />
+<path fill-rule="evenodd" d="M28.1,244H166.7V140.1H28.1V244Z" class="g0_1" />
+<path d="M28.1,244H166.7V140.1H28.1V244Z" class="g1_1" />
+<text x="55" y="198" dx="0,0.3,0.6,0,-0.5,0,0.9,-0.8,1.2" class="s1_1">Generator</text>
+<path fill-rule="evenodd" d="M357.2,140.1H495.8l26,-26H383.2l-26,26Z" class="g0_1" />
+<path d="M357.2,140.1H495.8l26,-26H383.2l-26,26Z" class="g1_1" />
+<path fill-rule="evenodd" d="M495.8,244l26,-26V114.1l-26,26V244Z" class="g2_1" />
+<path d="M495.8,244l26,-26V114.1l-26,26V244Z" class="g1_1" />
+<path fill-rule="evenodd" d="M357.2,244H495.8V140.1H357.2V244Z" class="g0_1" />
+<path d="M357.2,244H495.8V140.1H357.2V244Z" class="g1_1" />
+<text x="372" y="198" dx="0,0.6,0.1,-0.7,0.9,0.1,0.1,0.5,0.1,0.1,-0.1,0.4,0" class="s1_1">Discriminator</text>
+<path fill-rule="evenodd" d="M392.9,302.5H531.5l26,-26H418.9l-26,26Z" class="g0_1" />
+<path d="M392.9,302.5H531.5l26,-26H418.9l-26,26Z" class="g1_1" />
+<path fill-rule="evenodd" d="M531.5,406.4l26,-26V276.5l-26,26V406.4Z" class="g2_1" />
+<path d="M531.5,406.4l26,-26V276.5l-26,26V406.4Z" class="g1_1" />
+<path fill-rule="evenodd" d="M392.9,406.4H531.5V302.5H392.9V406.4Z" class="g0_1" />
+<path d="M392.9,406.4H531.5V302.5H392.9V406.4Z" class="g1_1" />
+<text x="426" y="361" dx="0,-0.1,0.1,0.9,-0.8,0.4,0.1,-0.2,0.1,0.6" class="s1_1">Classifier</text>
+<path fill-rule="evenodd" d="M45.4,396.9c0,5.3,29.1,9.5,65,9.5c35.8,0,64.9,-4.2,64.9,-9.5V320.7H45.4v76.2Z" class="g0_1" />
+<path d="M45.4,396.9c0,5.3,29.1,9.5,65,9.5c35.8,0,64.9,-4.2,64.9,-9.5V320.7H45.4v76.2Z" class="g1_1" />
+<path fill-rule="evenodd" d="M45.4,320.7c0,-5.3,29.1,-9.5,65,-9.5c35.8,0,64.9,4.2,64.9,9.5c0,5.2,-29.1,9.5,-64.9,9.5c-35.9,0,-65,-4.3,-65,-9.5Z" class="g0_1" />
+<path d="M45.4,320.7c0,-5.3,29.1,-9.5,65,-9.5c35.8,0,64.9,4.2,64.9,9.5c0,5.2,-29.1,9.5,-64.9,9.5c-35.9,0,-65,-4.3,-65,-9.5Z" class="g1_1" />
+<text x="72" y="365" dx="0,0.6,-0.2,0.3,-0.2,0,-0.2,0.4" class="s1_1">Database</text>
+<path d="M203.5,181.2H325.2" class="g3_1" />
+<path fill-rule="evenodd" d="M323.6,175.1l18.5,6.1l-18.5,6.2V175.1Z" class="g4_1" />
+<g clip-path="url(#c0_1)">
+<path d="M181.8,361c23.3,-3.7,44.4,-1.8,66.3,-.8c24.1,1.2,49.2,1.2,69.5,8.9c16.1,6.1,29.2,16.9,49.9,15.7" class="g5_1" />
+<path fill-rule="evenodd" d="M364.8,379.1l19.3,2.4l-16.9,9.6l-2.4,-12Z" class="g6_1" />
+<path d="M203.5,196.4c20.7,3.2,36.3,15.5,49.8,29.6c39.4,41.1,60,97.4,115.4,112.4" class="g5_1" />
+<path fill-rule="evenodd" d="M368.4,332.1l17,9.4l-19.3,2.6l2.3,-12Z" class="g6_1" />
+</g>
+<g clip-path="url(#c1_1)">
+<path d="M181.8,348c27.7,-10.7,59.3,-30.6,75.8,-58.2c11.1,-18.5,15.5,-40.4,30.2,-53.8c11.2,-10.2,28.4,-15.4,44.9,-21.9" class="g3_1" />
+<path fill-rule="evenodd" d="M328.8,209.1l19.3,-1.9l-14.3,13.1l-5,-11.2Z" class="g4_1" />
+</g>
+<path d="M342.1,161.4H218.2" class="g7_1" />
+<path fill-rule="evenodd" d="M219.7,167.6l-18.4,-6.2l18.4,-6.1v12.3Z" class="g8_1" />
+<g clip-path="url(#c2_1)">
+<path d="M378.9,360.1C291.9,350.4,285.1,248,208.9,219.5" class="g7_1" />
+<path fill-rule="evenodd" d="M208.6,225.8l-16,-11L212,214l-3.4,11.8Z" class="g8_1" />
+</g>
+<path d="M778.1,46.9h24.2" class="g3_1" />
+<path fill-rule="evenodd" d="M800.8,40.8l18.4,6.1l-18.4,6.2V40.8Z" class="g4_1" />
+<path d="M778.1,81.6h24.2" class="g5_1" />
+<path fill-rule="evenodd" d="M800.8,75.4l18.4,6.2l-18.4,6.1V75.4Z" class="g6_1" />
+<path d="M818.4,116.2H794.9" class="g7_1" />
+<path fill-rule="evenodd" d="M796.5,122.4l-18.4,-6.2l18.4,-6.1v12.3Z" class="g8_1" />
+<text x="551" y="52" dx="0,-0.4,0,0,0.7,-0.7,0.1,0.6,-0.7,0.6,-0.8,0.4,-0.5,0.4,-0.5,0.3,-0.3,0.2,0.4,-0.8,0.2,0.3,-0.5,0.3,-0.4,0.6,-0.7" class="s2_1">Feed forward discriminators</text>
+<text x="593" y="86" dx="0,-0.4,0,0,0.7,-0.7,0.1,0.6,-0.6,0.6,-0.7,0.5,-0.4,0.5,0.3,-0.8,0.4,-0.3,0.9,-0.8,0.1,0.4,0" class="s3_1">Feed forward classifier</text>
+<text x="535" y="118" dx="0,0.3,-0.8,0.2,-0.3,0.6,-0.7,0.6,-0.5,0.3,-0.6,0.3,-0.4,0.3,0.6,-0.5,0.4,-1,0.6,-0.7,0.4,0.5,0,-0.5,0,0.4,-0.8,0.7,-0.5" class="s2_1">Backpropagation for generator</text>
+<path d="M559.3,174.7h-9" class="g9_1" />
+<path fill-rule="evenodd" d="M551.8,180.9l-18.4,-6.2l18.4,-6.1v12.3Z" class="g10_1" />
+<path d="M594,339.3h-9.1" class="g9_1" />
+<path fill-rule="evenodd" d="M586.4,345.4L568,339.3l18.4,-6.1v12.2Z" class="g10_1" />
+<text x="566" y="181" dx="0,0.1,0.3,-0.3,0.2,-0.7,0.3,0.2,-0.8,0.6,-0.8,0.7,-0.5" class="s2_1">Discriminator</text>
+<text x="667" y="181" class="s4_1">°</text>
+<text x="671" y="181" dx="0,-0.3,0.4,0.3,-0.5,-0.3" class="s2_1">s Loss</text>
+<text x="615" y="344" dx="0,0.5,-0.8,0.3,-0.3,-0.3,0.3,0.1,0.3,0" class="s3_1">Classifier</text>
+<text x="682" y="344" class="s5_1">°</text>
+<text x="687" y="344" dx="0,-0.3,0.4,0.3,-0.5,-0.3" class="s3_1">s Loss</text>
+
+
+<!-- Any embedded fonts defined here -->
+<style type="text/css" ><![CDATA[
+
+@font-face {
+	font-family: Calibri_d;
+	src: url("fonts/Calibri_d.woff") format("woff");
+}
+
+@font-face {
+	font-family: Calibri_7;
+	src: url("fonts/Calibri_7.woff") format("woff");
+}
+
+]]></style>
+
+</svg>

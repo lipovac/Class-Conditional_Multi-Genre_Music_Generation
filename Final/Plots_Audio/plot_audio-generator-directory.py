@@ -40,7 +40,7 @@ def main():
                 output_filename = ags.output+os.path.basename(pypianoroll_file).split(".")[0]
                 output_filename = join(savepath, output_filename)
 
-            fig, axs = plot_multitrack(loaded, filename=output_filename+".pdf", preset="frame")
+            fig, axs = plot_multitrack(loaded, filename=output_filename+".svg", preset="frame")
             plt.close(fig)
 
             #Save to WAV

@@ -38,7 +38,7 @@ def main():
 
     print(output_filename)
 
-    plot_multitrack(loaded, filename=output_filename+".pdf", preset="frame")
+    plot_multitrack(loaded, filename=output_filename+".svg", preset="frame")
 
     #Save to WAV
     pypianoroll.write(loaded, (output_filename+".mid"))
