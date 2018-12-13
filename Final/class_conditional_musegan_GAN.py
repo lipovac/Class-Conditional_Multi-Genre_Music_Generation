@@ -212,38 +212,45 @@ def Generator(input_genre, latent_vector, LATENT_SIZE, NUM_TRACKS, NUM_CLASSES):
   embedding_layer =  tf.keras.layers.Embedding(NUM_CLASSES, LATENT_SIZE, embeddings_initializer='glorot_normal', name = 'generator_embedding')
   embedding_lookup = embedding_layer.__call__(input_genre)
   class_input = tf.multiply(latent_vector, embedding_lookup, name = 'generator_multiply')
+  bn_0 = tf.layers.batch_normalization(class_input, name='generator_batch_norm_0')
   #print(class_input)
 
   #Shared Generator
   def shared_generator(class_input):
-    dense_1 = tf.layers.dense(class_input, (3*512), activation = my_leaky_relu, name='generator_dense_1')
+    dense_1 = tf.layers.dense(bn_0, (3*128), activation = my_leaky_relu, name='generator_dense_1')
     bn_1 = tf.layers.batch_normalization(dense_1, name='generator_batch_norm_1')
-    reshape_1 = tf.reshape(bn_1, [-1,3,1,1,512], name = 'generator_reshape_1')
-    trans_conv3d_1 = tf.layers.conv3d_transpose(reshape_1, 256, (2, 1, 1), (1, 1, 1), activation = my_leaky_relu, name='generator_transconv3d_1')
+    reshape_1 = tf.reshape(bn_1, [-1,3,1,1,128], name = 'generator_reshape_1')
+    trans_conv3d_1 = tf.layers.conv3d_transpose(reshape_1, 64, (2, 1, 1), (1, 1, 1), activation = my_leaky_relu, name='generator_transconv3d_1')
     bn_2 = tf.layers.batch_normalization(trans_conv3d_1, name='generator_batch_norm_2')
-    trans_conv3d_2 =  tf.layers.conv3d_transpose(bn_2, 128, (1, 4, 1), (1, 4, 1), activation = my_leaky_relu, name='generator_transconv3d_2')
+    trans_conv3d_2 =  tf.layers.conv3d_transpose(bn_2, 32, (1, 4, 1), (1, 4, 1), activation = my_leaky_relu, name='generator_transconv3d_2')
     bn_3 = tf.layers.batch_normalization(trans_conv3d_2, name='generator_batch_norm_3')
-    trans_conv3d_3 =  tf.layers.conv3d_transpose(bn_3, 128, (1, 1, 3), (1, 1, 3), activation = my_leaky_relu, name='generator_transconv3d_3')
+    trans_conv3d_3 =  tf.layers.conv3d_transpose(bn_3, 32, (1, 1, 3), (1, 1, 3), activation = my_leaky_relu, name='generator_transconv3d_3')
     bn_4 = tf.layers.batch_normalization(trans_conv3d_3, name='generator_batch_norm_4')
-    trans_conv3d_4 =  tf.layers.conv3d_transpose(bn_4, 64, (1, 4, 1), (1, 4, 1), activation = my_leaky_relu, name='generator_transconv3d_4')
+    trans_conv3d_4 =  tf.layers.conv3d_transpose(bn_4, 16, (1, 4, 1), (1, 4, 1), activation = my_leaky_relu, name='generator_transconv3d_4')
     bn_5 = tf.layers.batch_normalization(trans_conv3d_4, name='generator_batch_norm_5')
-    trans_conv3d_5 =  tf.layers.conv3d_transpose(bn_5, 64, (1, 1, 3), (1, 1, 2), activation = my_leaky_relu, name='generator_transconv3d_5')
+    trans_conv3d_5 =  tf.layers.conv3d_transpose(bn_5, 16, (1, 1, 3), (1, 1, 2), activation = my_leaky_relu, name='generator_transconv3d_5')
     shared_out = tf.layers.batch_normalization(trans_conv3d_5, name='generator_batch_norm_6')
+    #blah1 = tf.layers.conv3d_transpose(shared_out, 16, (1, 1, 12), (1, 1, 12), activation = my_leaky_relu, name = ('generator_pt_conv3d_1'))
+    #print(blah1)
+    #blah2 = tf.layers.conv3d_transpose(blah1, 16, (1, 6, 1), (1, 6, 1), activation = my_leaky_relu, name = ('generator_pt_conv3d_2'))
+    #print(blah2)
+    #generator_out_1 = tf.sigmoid(tf.layers.conv3d_transpose(blah2, 1, (1, 1, 1), (1, 1, 1), name = ('generator_merged_conv3d'))
+    #print(blah3)
     #print(shared_out)
     return shared_out
 
   #Private Generator
   def pitch_time_private(shared_out, track_num):
-    pt_conv3d_1 = tf.layers.conv3d_transpose(shared_out, 64, (1, 1, 12), (1, 1, 12), activation = my_leaky_relu, name = ('generator_pt_conv3d_1'+str(track_num)))
+    pt_conv3d_1 = tf.layers.conv3d_transpose(shared_out, 16, (1, 1, 12), (1, 1, 12), activation = my_leaky_relu, name = ('generator_pt_conv3d_1'+str(track_num)))
     pt_bn_1 = tf.layers.batch_normalization(pt_conv3d_1, name=('generator_pt_bn_1'+str(track_num)))
-    pt_conv3d_2 = tf.layers.conv3d_transpose(pt_bn_1, 32, (1, 6, 1), (1, 6, 1), activation = my_leaky_relu, name = ('generator_pt_conv3d_2'+str(track_num)))
+    pt_conv3d_2 = tf.layers.conv3d_transpose(pt_bn_1, 8, (1, 6, 1), (1, 6, 1), activation = my_leaky_relu, name = ('generator_pt_conv3d_2'+str(track_num)))
     pt_bn_2 = tf.layers.batch_normalization(pt_conv3d_2, name=('generator_pt_bn_2'+str(track_num)))
     return pt_bn_2
 
   def time_pitch_private(shared_out, track_num):
-    tp_conv3d_1 = tf.layers.conv3d_transpose(shared_out, 64, (1, 6, 1), (1, 6, 1), activation = my_leaky_relu, name = ('generator_tp_conv3d_1'+str(track_num)))
+    tp_conv3d_1 = tf.layers.conv3d_transpose(shared_out, 16, (1, 6, 1), (1, 6, 1), activation = my_leaky_relu, name = ('generator_tp_conv3d_1'+str(track_num)))
     tp_bn_1 = tf.layers.batch_normalization(tp_conv3d_1, name=('generator_tp_bn_1'+str(track_num)))
-    tp_conv3d_2 = tf.layers.conv3d_transpose(tp_bn_1, 32, (1, 1, 12), (1, 1, 12), activation = my_leaky_relu, name = ('generator_tp_conv3d_2'+str(track_num)))
+    tp_conv3d_2 = tf.layers.conv3d_transpose(tp_bn_1, 8, (1, 1, 12), (1, 1, 12), activation = my_leaky_relu, name = ('generator_tp_conv3d_2'+str(track_num)))
     tp_bn_2 = tf.layers.batch_normalization(tp_conv3d_2, name= ('generator_tp_bn_2'+str(track_num)))
     return tp_bn_2
 
@@ -325,17 +332,18 @@ def Discriminator(refiner_out, NUM_TRACKS):
 
   private_discriminator_out = tf.concat(private_out,-1)
   shared_discriminator_out = shared_discriminator(private_discriminator_out)
-  num_features_1= shared_discriminator_out.get_shape()[1]*shared_discriminator_out.get_shape()[2]*shared_discriminator_out.get_shape()[3]*shared_discriminator_out.get_shape()[4]
-  discriminator_out_1 = tf.squeeze(tf.layers.dense(tf.reshape(shared_discriminator_out, [-1, num_features_1]), 1, name='discriminator_dense_out1'))
+  #num_features_1= shared_discriminator_out.get_shape()[1]*shared_discriminator_out.get_shape()[2]*shared_discriminator_out.get_shape()[3]*shared_discriminator_out.get_shape()[4]
+  #discriminator_out_1 = tf.squeeze(tf.layers.dense(tf.reshape(shared_discriminator_out, [-1, num_features_1]), 1, name='discriminator_dense_out1'))
   chroma_out = Chroma(refiner_out)
-  num_features_2= chroma_out.get_shape()[1]*chroma_out.get_shape()[2]*chroma_out.get_shape()[3]*chroma_out.get_shape()[4]
-  discriminator_out_2 = tf.squeeze(tf.layers.dense(tf.reshape(chroma_out, [-1, num_features_2]), 1, name='discriminator_dense_out2'))
+  #num_features_2= chroma_out.get_shape()[1]*chroma_out.get_shape()[2]*chroma_out.get_shape()[3]*chroma_out.get_shape()[4]
+  #discriminator_out_2 = tf.squeeze(tf.layers.dense(tf.reshape(chroma_out, [-1, num_features_2]), 1, name='discriminator_dense_out2'))
   onset_out = Onset(refiner_out)
-  num_features_3= onset_out.get_shape()[1]*onset_out.get_shape()[2]*onset_out.get_shape()[3]*onset_out.get_shape()[4]
-  discriminator_out_3 = tf.squeeze(tf.layers.dense(tf.reshape(onset_out, [-1, num_features_3]), 1, name='discriminator_dense_out3'))
+  #num_features_3= onset_out.get_shape()[1]*onset_out.get_shape()[2]*onset_out.get_shape()[3]*onset_out.get_shape()[4]
+  #discriminator_out_3 = tf.squeeze(tf.layers.dense(tf.reshape(onset_out, [-1, num_features_3]), 1, name='discriminator_dense_out3'))
   concated = tf.concat([shared_discriminator_out, chroma_out, onset_out], -1)
   discriminator_out = tf.squeeze(Merged_Discriminator(concated))
-  return discriminator_out, discriminator_out_1, discriminator_out_2, discriminator_out_3
+  return discriminator_out
+  #return discriminator_out, discriminator_out_1, discriminator_out_2, discriminator_out_3
 
 def Classifier(refiner_out, NUM_TRACKS, NUM_CLASSES):
   def my_leaky_relu(x):
@@ -456,12 +464,12 @@ def classifier_loss(data, labels, label_smoothing, confidence_penalty): # if lab
   return tf.losses.softmax_cross_entropy(labels, data, label_smoothing= label_smoothing) + confidence_penalty*tf.reduce_sum(tf.nn.softmax(data)*tf.log(tf.nn.softmax(data)))
 
 
-def VAC_GAN_loss(fake_out, fake_out_1, fake_out_2, fake_out_3, real_out, real_out_1, real_out_2, real_out_3, classifier_out, classifier_labels, discriminator_labels_real, discriminator_labels_fake, variance):
+def VAC_GAN_loss(fake_out, real_out, classifier_out, classifier_labels, discriminator_labels_real, discriminator_labels_fake, variance):
+    #print(real_out)
+    #print(discriminator_labels_real)
+    #print(discriminator_labels_fake)
     generator_loss = NU*tf.losses.sigmoid_cross_entropy(logits=fake_out, multi_class_labels=tf.zeros(fake_out.get_shape(), dtype = tf.float32))+ZETA*tf.losses.softmax_cross_entropy(classifier_labels, classifier_out)+LOW_VARIANCE_PENALTY/variance
-    discriminator_loss = tf.losses.sigmoid_cross_entropy(logits=real_out, multi_class_labels= discriminator_labels_real) + tf.losses.sigmoid_cross_entropy(logits=fake_out, multi_class_labels=discriminator_labels_fake) + \
-                        tf.losses.sigmoid_cross_entropy(logits=real_out_1, multi_class_labels= discriminator_labels_real) + tf.losses.sigmoid_cross_entropy(logits=fake_out_1, multi_class_labels=discriminator_labels_fake) + \
-                        tf.losses.sigmoid_cross_entropy(logits=real_out_2, multi_class_labels= discriminator_labels_real) + tf.losses.sigmoid_cross_entropy(logits=fake_out_2, multi_class_labels=discriminator_labels_fake) + \
-                        tf.losses.sigmoid_cross_entropy(logits=real_out_3, multi_class_labels= discriminator_labels_real) + tf.losses.sigmoid_cross_entropy(logits=fake_out_3, multi_class_labels=discriminator_labels_fake)
+    discriminator_loss = tf.losses.sigmoid_cross_entropy(logits=real_out, multi_class_labels= discriminator_labels_real) + tf.losses.sigmoid_cross_entropy(logits=fake_out, multi_class_labels=discriminator_labels_fake)
     return generator_loss, discriminator_loss
 
 
@@ -573,7 +581,7 @@ def main():
     real_data = tf.placeholder(dtype = tf.bool, shape = [REAL_DATA_BATCH_SIZE, NUM_BARS, BEATS_PER_BAR, NUM_NOTES, NUM_TRACKS])
     real_data = tf.cast(real_data, tf.float32)
     discriminator_labels_real = tf.placeholder(dtype = tf.float32, shape = REAL_DATA_BATCH_SIZE)
-    discriminator_labels_fake = tf.placeholder(dtype = tf.float32, shape = REAL_DATA_BATCH_SIZE)
+    discriminator_labels_fake = tf.placeholder(dtype = tf.float32, shape = GENERATOR_BATCH_SIZE)
     #real_data_labels = tf.placeholder(dtype = tf.int32, shape = None)
     #labels = tf.one_hot(real_data_labels, NUM_CLASSES)
 
@@ -582,9 +590,9 @@ def main():
     #refiner_out = Refiner(generator_out, NUM_TRACKS, RESIDUAL_LAYERS, SLOPE_TENSOR)
 
     with tf.variable_scope('Discriminator') as scope:
-        fake_out, fake_out_1, fake_out_2, fake_out_3 = Discriminator(generator_out, NUM_TRACKS)
+        fake_out = Discriminator(generator_out, NUM_TRACKS)
         scope.reuse_variables()
-        real_out, real_out_1, real_out_2, real_out_3 = Discriminator(real_data, NUM_TRACKS)
+        real_out  = Discriminator(real_data, NUM_TRACKS)
 
     classifier_out, classifier_out_1, classifier_out_2, classifier_out_3 = Classifier(generator_out, NUM_TRACKS, NUM_CLASSES)
 
@@ -597,7 +605,7 @@ def main():
     print("Classifier out: ", classifier_out)
     print("\n\n")
 
-    mean, variance = tf.nn.moments(generator_out,[0,1,2,3,4],shift=None,name=None,keep_dims=False)
+    variance = tf.reduce_mean(tf.square(tf.subtract(generator_out,0.5)),[0,1,2,3,4],name=None,keep_dims=False)
 
     #LOAD MODEL AND GENERATE MUSIC
     classifier_labels = tf.one_hot(input_genre, NUM_CLASSES)
@@ -608,7 +616,7 @@ def main():
     discriminator_accuracy, acc_disc = tf.metrics.accuracy(tf.concat([tf.ones(fake_out.get_shape(), dtype = tf.int32),tf.zeros(real_out.get_shape(), dtype = tf.int32)], axis = -1), tf.round(tf.sigmoid(tf.concat([fake_out, real_out], axis = -1))))
 
     #DECLARE LOSS FUNCTIONS
-    generator_loss, discriminator_loss = VAC_GAN_loss(fake_out, fake_out_1, fake_out_2, fake_out_3, real_out, real_out_1, real_out_2, real_out_3, classifier_out, classifier_labels, discriminator_labels_real, discriminator_labels_fake, variance)
+    generator_loss, discriminator_loss = VAC_GAN_loss(fake_out, real_out, classifier_out, classifier_labels, discriminator_labels_real, discriminator_labels_fake, variance)
     #print(generator_loss)
     #print(discriminator_loss)
 
@@ -645,7 +653,7 @@ def main():
         opt_saver.restore(session, save_file)
 
     #LOAD IN CLASSIFIER_WEIGHTS
-    checkpoint_path = r'/home/cofphe/Documents/jacob-luka/Models/saved_models_2018-12-06_01:02:25-63%accuracy/'
+    checkpoint_path = r'/home/cofphe/Documents/jacob-luka/Models/saved_models_2018-12-13_00:29:45'
     optimistic_restore(sess, tf.train.latest_checkpoint(checkpoint_path))
 
     data_path = abspath(sys.argv[1])
@@ -704,7 +712,7 @@ def main():
     #exit()
     BATCHES_PER_EPOCH = int(data.num_examples/REAL_DATA_BATCH_SIZE)
 
-    #progress = trange(1000, desc = 'Bar_desc', leave = True)
+    #progress = trange(2000, desc = 'Bar_desc', leave = True)
     progress = trange(BATCHES_PER_EPOCH*GAN_EPOCHS, desc = 'Bar_desc', leave = True)
 
     for t in progress:
@@ -713,8 +721,10 @@ def main():
         latent_batch = data.get_noise()
         discriminator_labels_real_batch, discriminator_labels_fake_batch = data.get_labels()
         #print(sess.run([variance],feed_dict={input_genre: genre_batch, latent_vector: latent_batch, real_data: data_batch, discriminator_labels_real: discriminator_labels_real_batch, discriminator_labels_fake: discriminator_labels_fake_batch}))
-
-        loss_generator, optim_generator, loss_discriminator, optim_discriminator, class_acc, disc_acc, variance_batch = sess.run([generator_loss, generator_optim, discriminator_loss, discriminator_optim, acc_op, acc_disc, variance],feed_dict={input_genre: genre_batch, latent_vector: latent_batch, real_data: data_batch, discriminator_labels_real: discriminator_labels_real_batch, discriminator_labels_fake: discriminator_labels_fake_batch})
+        if t%G_D_ASPECT_RATIO == 0:
+            loss_generator, optim_generator, loss_discriminator, optim_discriminator, class_acc, disc_acc, variance_batch = sess.run([generator_loss, generator_optim, discriminator_loss, discriminator_optim, acc_op, acc_disc, variance],feed_dict={input_genre: genre_batch, latent_vector: latent_batch, real_data: data_batch, discriminator_labels_real: discriminator_labels_real_batch, discriminator_labels_fake: discriminator_labels_fake_batch})
+        else:
+            loss_generator, optim_generator, class_acc, disc_acc, variance_batch = sess.run([generator_loss, generator_optim, acc_op, acc_disc, variance],feed_dict={input_genre: genre_batch, latent_vector: latent_batch, real_data: data_batch, discriminator_labels_real: discriminator_labels_real_batch, discriminator_labels_fake: discriminator_labels_fake_batch})
         progress.set_description('GEN LOSS ===> ' + str(loss_generator) + ' DIS LOSS ===> ' + str(loss_discriminator) + '  CLASS ACC ===> ' + str(class_acc) + '  DISC ACC ===> ' + str(disc_acc) + '  VAR ===> ' + str(variance_batch))
         progress.refresh()
 
